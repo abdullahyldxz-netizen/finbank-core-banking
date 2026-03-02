@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     MONGODB_DB_NAME: str = "finbank"
 
     # JWT
-    JWT_SECRET: str = "change-this-to-a-very-long-random-string"
+    JWT_SECRET: str = ""
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60
 
@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     TELEGRAM_CHAT_ID: str = ""
 
     # Webhooks
-    WEBHOOK_URL: str = "http://webhook-receiver:9000/webhook"
+    WEBHOOK_URL: str = ""
     WEBHOOK_TIMEOUT: int = 5
     WEBHOOK_RETRY_COUNT: int = 3
 
@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_GENERAL: str = "60/minute"
 
     # CORS
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,https://finbank-core-banking.pages.dev"
 
     # Logging
     JSON_LOGS: bool = False

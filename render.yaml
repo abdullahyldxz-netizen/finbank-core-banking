@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: finbank-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    rootDir: backend
+    envVars:
+      - key: MONGODB_URL
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: finbank
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRE_MINUTES
+        value: 60
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://finbank-core-banking.pages.dev,http://localhost:3000,http://localhost:5173
+      - key: WEBHOOK_URL
+        value: ""
+      - key: RATE_LIMIT_AUTH
+        value: 5/minute
+      - key: RATE_LIMIT_GENERAL
+        value: 60/minute
+      - key: DEBUG
+        value: "false"
+      - key: PYTHON_VERSION
+        value: "3.11"
