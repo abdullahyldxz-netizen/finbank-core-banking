@@ -1,0 +1,266 @@
+version: "3.9"
+
+services:
+  # ── API Gateway (Nginx) ──
+  api-gateway:
+    build:
+      context: ../services/api-gateway
+      dockerfile: Dockerfile
+    container_name: finbank-gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      - auth-service
+      - banking-service
+      - notification-service
+      - analytics-service
+      - admin-service
+      - employee-service
+      - chatbot-service
+    restart: unless-stopped
+    networks:
+      - finbank-network
+
+  # ── Auth Service ──
+  auth-service:
+    build:
+      context: ../services/auth-service
+      dockerfile: Dockerfile
+    container_name: finbank-auth
+    env_file:
+      - ../.env
+    volumes:
+      - ../services/shared:/app/shared
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - finbank-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Banking Service ──
+  banking-service:
+    build:
+      context: ../services/banking-service
+      dockerfile: Dockerfile
+    container_name: finbank-banking
+    env_file:
+      - ../.env
+    volumes:
+      - ../services/shared:/app/shared
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - finbank-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Notification Service ──
+  notification-service:
+    build:
+      context: ../services/notification-service
+      dockerfile: Dockerfile
+    container_name: finbank-notification
+    env_file:
+      - ../.env
+    volumes:
+      - ../services/shared:/app/shared
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - finbank-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Analytics Service ──
+  analytics-service:
+    build:
+      context: ../services/analytics-service
+      dockerfile: Dockerfile
+    container_name: finbank-analytics
+    env_file:
+      - ../.env
+    volumes:
+      - ../services/shared:/app/shared
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - finbank-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Admin Service ──
+  admin-service:
+    build:
+      context: ../services/admin-service
+      dockerfile: Dockerfile
+    container_name: finbank-admin
+    env_file:
+      - ../.env
+    volumes:
+      - ../services/shared:/app/shared
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - finbank-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Employee Service ──
+  employee-service:
+    build:
+      context: ../services/employee-service
+      dockerfile: Dockerfile
+    container_name: finbank-employee
+    env_file:
+      - ../.env
+    volumes:
+      - ../services/shared:/app/shared
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - finbank-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Chatbot Service (Gemini AI) ──
+  chatbot-service:
+    build:
+      context: ../services/chatbot-service
+      dockerfile: Dockerfile
+    container_name: finbank-chatbot
+    env_file:
+      - ../.env
+    volumes:
+      - ../services/shared:/app/shared
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - finbank-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── React Frontend ──
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: finbank-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+    restart: unless-stopped
+    networks:
+      - finbank-network
+
+  # ── MongoDB ──
+  mongo:
+    image: mongo:7
+    container_name: finbank-mongo
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - finbank-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    command: ["mongod", "--replSet", "rs0"]
+
+  # ── Mongo Init Replica Set ──
+  mongo-init:
+    image: mongo:7
+    container_name: finbank-mongo-init
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - finbank-network
+    entrypoint: >
+      mongosh --host mongo:27017 --eval '
+        try {
+          rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "mongo:27017" }] });
+          print("Replica set initiated");
+        } catch(e) {
+          if (e.codeName === "AlreadyInitialized") {
+            print("Replica set already initialized");
+          } else {
+            throw e;
+          }
+        }
+      '
+    restart: "no"
+
+  # ── Webhook Receiver (mock) ──
+  webhook-receiver:
+    image: python:3.11-slim
+    container_name: finbank-webhook
+    ports:
+      - "9000:9000"
+    networks:
+      - finbank-network
+    entrypoint: >
+      python -c "
+      from http.server import HTTPServer, BaseHTTPRequestHandler
+      import json, sys
+
+      class Handler(BaseHTTPRequestHandler):
+          def do_POST(self):
+              length = int(self.headers.get('Content-Length', 0))
+              body = self.rfile.read(length)
+              data = json.loads(body) if body else {}
+              print(f'[WEBHOOK] Event: {data.get(\"event\", \"unknown\")}', flush=True)
+              self.send_response(200)
+              self.end_headers()
+              self.wfile.write(b'{\"status\":\"received\"}')
+
+      print('Webhook receiver listening on :9000', flush=True)
+      HTTPServer(('0.0.0.0', 9000), Handler).serve_forever()
+      "
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
+
+networks:
+  finbank-network:
+    driver: bridge

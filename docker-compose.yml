@@ -1,0 +1,98 @@
+version: "3.9"
+
+services:
+  # ── MongoDB ──
+  mongo:
+    image: mongo:7
+    container_name: finbank-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    command: ["mongod", "--replSet", "rs0"]
+    healthcheck:
+      test: |
+        mongosh --eval "
+          try {
+            rs.status().ok
+          } catch(e) {
+            rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]});
+            1
+          }
+        " --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - finbank-network
+
+  # ── Backend (FastAPI Monolith) ──
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: finbank-backend
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - finbank-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Frontend (React + Nginx) ──
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: finbank-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - finbank-network
+
+  # ── Mock Webhook Receiver ──
+  webhook-receiver:
+    image: python:3.11-slim
+    container_name: finbank-webhook
+    command: >
+      python -c "
+      from http.server import HTTPServer, BaseHTTPRequestHandler
+      import json
+
+      class Handler(BaseHTTPRequestHandler):
+          def do_POST(self):
+              length = int(self.headers.get('Content-Length', 0))
+              body = self.rfile.read(length)
+              print(f'WEBHOOK RECEIVED: {json.loads(body)}')
+              self.send_response(200)
+              self.end_headers()
+              self.wfile.write(b'{\"ok\":true}')
+
+      HTTPServer(('0.0.0.0', 9000), Handler).serve_forever()
+      "
+    ports:
+      - "9000:9000"
+    restart: unless-stopped
+    networks:
+      - finbank-network
+
+volumes:
+  mongo_data:
+
+networks:
+  finbank-network:
+    driver: bridge

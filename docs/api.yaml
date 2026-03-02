@@ -1,0 +1,366 @@
+openapi: 3.0.3
+info:
+  title: FinBank — Mini Core Banking System API
+  version: 1.0.0
+  description: |
+    REST API for the Mini Core Banking System.
+    Built with FastAPI + MongoDB. Uses JWT Bearer authentication.
+  contact:
+    name: Team 2
+    email: team2@fintech.edu.tr
+
+servers:
+  - url: http://localhost:8000
+    description: Local Development
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    UserRegister:
+      type: object
+      required: [email, password, full_name]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        full_name:
+          type: string
+        role:
+          type: string
+          enum: [admin, customer]
+          default: customer
+
+    UserLogin:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+        role:
+          type: string
+
+    CustomerCreate:
+      type: object
+      required: [first_name, last_name, national_id, phone]
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        national_id:
+          type: string
+          pattern: '^\d{11}$'
+        phone:
+          type: string
+        address:
+          type: string
+
+    AccountCreate:
+      type: object
+      required: [account_type, currency]
+      properties:
+        account_type:
+          type: string
+          enum: [checking, savings, business]
+        currency:
+          type: string
+          default: TRY
+
+    DepositRequest:
+      type: object
+      required: [account_id, amount]
+      properties:
+        account_id:
+          type: string
+        amount:
+          type: number
+          minimum: 0.01
+          maximum: 1000000
+        description:
+          type: string
+
+    WithdrawRequest:
+      type: object
+      required: [account_id, amount]
+      properties:
+        account_id:
+          type: string
+        amount:
+          type: number
+          minimum: 0.01
+          maximum: 1000000
+        description:
+          type: string
+
+    TransferRequest:
+      type: object
+      required: [from_account_id, to_account_id, amount]
+      properties:
+        from_account_id:
+          type: string
+        to_account_id:
+          type: string
+        amount:
+          type: number
+          minimum: 0.01
+          maximum: 1000000
+        description:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+
+paths:
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRegister"
+      responses:
+        "201":
+          description: User registered
+        "409":
+          description: Email already exists
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and get JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/UserLogin"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "401":
+          description: Invalid credentials
+
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: User profile
+
+  /api/v1/customers/:
+    post:
+      tags: [Customers]
+      summary: Create customer profile (KYC)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerCreate"
+      responses:
+        "201":
+          description: Customer created
+    get:
+      tags: [Customers]
+      summary: List all customers (Admin only)
+      responses:
+        "200":
+          description: List of customers
+
+  /api/v1/customers/me:
+    get:
+      tags: [Customers]
+      summary: Get my customer profile
+      responses:
+        "200":
+          description: Customer profile
+        "404":
+          description: No profile found
+
+  /api/v1/customers/{customer_id}/status:
+    patch:
+      tags: [Customers]
+      summary: Update KYC status (Admin only)
+      parameters:
+        - name: customer_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Status updated
+
+  /api/v1/accounts/:
+    post:
+      tags: [Accounts]
+      summary: Open a new account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountCreate"
+      responses:
+        "201":
+          description: Account opened
+    get:
+      tags: [Accounts]
+      summary: List my accounts
+      responses:
+        "200":
+          description: List of accounts
+
+  /api/v1/accounts/{account_id}/balance:
+    get:
+      tags: [Accounts]
+      summary: Get account balance (computed from ledger)
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Balance response
+
+  /api/v1/transactions/deposit:
+    post:
+      tags: [Transactions]
+      summary: Deposit money
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepositRequest"
+      responses:
+        "200":
+          description: Deposit successful
+
+  /api/v1/transactions/withdraw:
+    post:
+      tags: [Transactions]
+      summary: Withdraw money
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WithdrawRequest"
+      responses:
+        "200":
+          description: Withdrawal successful
+
+  /api/v1/transactions/transfer:
+    post:
+      tags: [Transactions]
+      summary: Internal transfer between accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferRequest"
+      responses:
+        "200":
+          description: Transfer completed
+
+  /api/v1/ledger/:
+    get:
+      tags: [Ledger]
+      summary: Query ledger entries
+      parameters:
+        - name: account_id
+          in: query
+          schema:
+            type: string
+        - name: entry_type
+          in: query
+          schema:
+            type: string
+            enum: [DEBIT, CREDIT]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Paginated ledger entries
+
+  /api/v1/audit/:
+    get:
+      tags: [Audit]
+      summary: Query audit logs (Admin only)
+      parameters:
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          schema:
+            type: string
+        - name: outcome
+          in: query
+          schema:
+            type: string
+            enum: [SUCCESS, FAILURE]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Paginated audit logs
+
+  /health:
+    get:
+      tags: [System]
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: Service healthy
