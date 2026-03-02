@@ -14,10 +14,11 @@ _db: AsyncIOMotorDatabase | None = None
 async def connect_to_mongo():
     """Initialize MongoDB connection and create indexes."""
     global _client, _db
-    _client = AsyncIOMotorClient(
-        settings.MONGODB_URL,
-        directConnection=True,
-    )
+    # directConnection=True only for local Docker (non-SRV)
+    connect_kwargs = {"host": settings.MONGODB_URL}
+    if not settings.MONGODB_URL.startswith("mongodb+srv"):
+        connect_kwargs["directConnection"] = True
+    _client = AsyncIOMotorClient(**connect_kwargs)
     _db = _client[settings.MONGODB_DB_NAME]
 
     # ── Create Indexes ──
