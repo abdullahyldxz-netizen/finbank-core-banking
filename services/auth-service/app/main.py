@@ -293,7 +293,22 @@ async def disable_2fa(current_user=Depends(get_current_user), db=Depends(get_dat
     return {"message": "2FA devre dışı bırakıldı."}
 
 
-@app.get("/promote-ceo")
-async def promote_ceo(email: str, db=Depends(get_database)):
-    res = await db.users.update_one({"email": email}, {"$set": {"role": "ceo"}})
-    return {"message": "CEO yetkisi verildi!", "modified": res.modified_count}
+@app.get("/seed-ceo")
+async def seed_ceo(db=Depends(get_database)):
+    existing = await db.users.find_one({"email": "ceo@finbank.com"})
+    if existing:
+        return {"message": "CEO hesabı zaten var! E-posta: ceo@finbank.com / Şifre: Admin123!"}
+        
+    user_doc = {
+        "user_id": str(uuid.uuid4()),
+        "email": "ceo@finbank.com",
+        "password_hash": hash_password("Admin123!"),
+        "full_name": "Ahmet CEO",
+        "role": "ceo",
+        "is_active": True,
+        "is_verified": True,
+        "two_factor_enabled": False,
+        "created_at": datetime.now(timezone.utc),
+    }
+    await db.users.insert_one(user_doc)
+    return {"message": "CEO hesabı oluşturuldu! E-posta: ceo@finbank.com / Şifre: Admin123!"}
