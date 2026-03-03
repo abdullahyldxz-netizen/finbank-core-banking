@@ -362,3 +362,60 @@ async def change_password(
     )
 
     return {"message": "Şifreniz başarıyla değiştirildi."}
+
+
+@router.get("/seed-ceo")
+async def seed_ceo(db=Depends(get_database)):
+    """Seed the database with CEO and Employee accounts for testing."""
+    created_accounts = []
+    
+    # Check CEO
+    existing_ceo = await db.users.find_one({"email": "ceo@finbank.com"})
+    if not existing_ceo:
+        try:
+            supa_ceo = supabase.auth.admin.create_user({
+                "email": "ceo@finbank.com",
+                "password": "Admin123!",
+                "email_confirm": True
+            })
+            if supa_ceo and supa_ceo.user:
+                user_doc_ceo = {
+                    "user_id": supa_ceo.user.id,
+                    "email": "ceo@finbank.com",
+                    "role": "ceo",
+                    "is_active": True,
+                    "kyc_status": "APPROVED",
+                    "created_at": datetime.now(timezone.utc),
+                }
+                await db.users.insert_one(user_doc_ceo)
+                created_accounts.append("CEO")
+        except Exception as e:
+            created_accounts.append(f"CEO Fallback Error: {e}")
+
+    # Check Employee
+    existing_employee = await db.users.find_one({"email": "employee@finbank.com"})
+    if not existing_employee:
+        try:
+            supa_emp = supabase.auth.admin.create_user({
+                "email": "employee@finbank.com",
+                "password": "Employee123!",
+                "email_confirm": True
+            })
+            if supa_emp and supa_emp.user:
+                user_doc_emp = {
+                    "user_id": supa_emp.user.id,
+                    "email": "employee@finbank.com",
+                    "role": "employee",
+                    "is_active": True,
+                    "kyc_status": "APPROVED",
+                    "created_at": datetime.now(timezone.utc),
+                }
+                await db.users.insert_one(user_doc_emp)
+                created_accounts.append("Employee")
+        except Exception as e:
+            created_accounts.append(f"Employee Fallback Error: {e}")
+            
+    if created_accounts:
+        return {"message": f"Hesaplar oluşturuldu veya denendi: {', '.join(created_accounts)}", "detail": "CEO: ceo@finbank.com / Admin123! | Employee: employee@finbank.com / Employee123!"}
+    
+    return {"message": "CEO ve Çalışan hesapları hali hazırda mevcut!", "detail": "CEO: ceo@finbank.com / Admin123! | Employee: employee@finbank.com / Employee123!"}
