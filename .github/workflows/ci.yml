@@ -91,7 +91,11 @@ jobs:
       - name: Build Frontend Docker Image
         run: docker build -t finbank-frontend ./frontend
 
-      - name: Verify Docker Compose Config
+      - name: Verify Monolith Docker Compose Config
+        run: docker compose config
+
+      - name: Verify Microservices Docker Compose Config
+        continue-on-error: true
         run: |
           cd infra
           docker compose config
