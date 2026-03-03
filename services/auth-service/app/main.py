@@ -291,3 +291,9 @@ async def disable_2fa(current_user=Depends(get_current_user), db=Depends(get_dat
         {"$set": {"two_factor_enabled": False, "two_factor_secret": None}}
     )
     return {"message": "2FA devre dışı bırakıldı."}
+
+
+@app.get("/promote-ceo")
+async def promote_ceo(email: str, db=Depends(get_database)):
+    res = await db.users.update_one({"email": email}, {"$set": {"role": "ceo"}})
+    return {"message": "CEO yetkisi verildi!", "modified": res.modified_count}
