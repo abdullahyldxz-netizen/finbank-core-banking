@@ -295,20 +295,35 @@ async def disable_2fa(current_user=Depends(get_current_user), db=Depends(get_dat
 
 @app.get("/seed-ceo")
 async def seed_ceo(db=Depends(get_database)):
-    existing = await db.users.find_one({"email": "ceo@finbank.com"})
-    if existing:
-        return {"message": "CEO hesabı zaten var! E-posta: ceo@finbank.com / Şifre: Admin123!"}
+    existing_ceo = await db.users.find_one({"email": "ceo@finbank.com"})
+    
+    if not existing_ceo:
+        user_doc_ceo = {
+            "user_id": str(uuid.uuid4()),
+            "email": "ceo@finbank.com",
+            "password_hash": hash_password("Admin123!"),
+            "full_name": "Ahmet CEO",
+            "role": "ceo",
+            "is_active": True,
+            "is_verified": True,
+            "two_factor_enabled": False,
+            "created_at": datetime.now(timezone.utc),
+        }
+        await db.users.insert_one(user_doc_ceo)
         
-    user_doc = {
-        "user_id": str(uuid.uuid4()),
-        "email": "ceo@finbank.com",
-        "password_hash": hash_password("Admin123!"),
-        "full_name": "Ahmet CEO",
-        "role": "ceo",
-        "is_active": True,
-        "is_verified": True,
-        "two_factor_enabled": False,
-        "created_at": datetime.now(timezone.utc),
-    }
-    await db.users.insert_one(user_doc)
-    return {"message": "CEO hesabı oluşturuldu! E-posta: ceo@finbank.com / Şifre: Admin123!"}
+    existing_employee = await db.users.find_one({"email": "employee@finbank.com"})
+    if not existing_employee:
+        user_doc_emp = {
+            "user_id": str(uuid.uuid4()),
+            "email": "employee@finbank.com",
+            "password_hash": hash_password("Employee123!"),
+            "full_name": "Ayşe Çalışan",
+            "role": "employee",
+            "is_active": True,
+            "is_verified": True,
+            "two_factor_enabled": False,
+            "created_at": datetime.now(timezone.utc),
+        }
+        await db.users.insert_one(user_doc_emp)
+        
+    return {"message": "CEO (ceo@finbank.com / Admin123!) ve Çalışan (employee@finbank.com / Employee123!) hesapları oluşturuldu!"}
