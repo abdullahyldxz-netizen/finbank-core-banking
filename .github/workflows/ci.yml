@@ -92,7 +92,9 @@ jobs:
         run: docker build -t finbank-frontend ./frontend
 
       - name: Verify Monolith Docker Compose Config
-        run: docker compose config
+        run: |
+          cp .env.example .env
+          docker compose config
 
       - name: Verify Microservices Docker Compose Config
         continue-on-error: true
