@@ -10,6 +10,7 @@ import random
 import sys
 import uuid
 
+import asyncio
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -197,14 +198,79 @@ async def lifespan(app: FastAPI):
     await db.easy_addresses.create_index("account_id")
     await db.easy_addresses.create_index("alias_value_normalized", unique=True)
     # Index for auto_bill_payments
-    await db.auto_bill_payments.create_index([("user_id", ASCENDING), ("status", ASCENDING)])
+    await db.auto_bill_payments.create_index([("user_id", 1), ("status", 1)])
+    
+    # Start background task for auto bills
+    task = asyncio.create_task(process_auto_bills_loop(db))
+    
     try:
         yield
     except Exception as e:
         print(f"MongoDB connection error: {e}", file=sys.stderr)
         yield
     finally:
+        task.cancel()
         await close_mongo_connection()
+
+async def process_auto_bills_loop(db):
+    """
+    Every 1 hour, checks if it's 10:00 AM UTC and processes bills.
+    For demonstration purposes, if `DEBUG` is true, we could run it more often,
+    but checking once an hour for `payment_day` matching today's day is standard.
+    """
+    while True:
+        try:
+            now = now_utc()
+            # Try to process auto bills if it's the right day
+            # Normally we should ensure we only run this once per day, 
+            # here we'll just check if it's between 08:00 and 09:00 UTC 
+            # and rely on a 'last_processed_date' or just simplicity for the demo.
+            if 8 <= now.hour <= 10:
+                today_day = now.day
+                active_orders = await db.auto_bill_payments.find({
+                    "status": "active",
+                    "payment_day": today_day,
+                }).to_list(1000)
+
+                for order in active_orders:
+                    # check if already paid this month
+                    last_paid = order.get("last_paid_date")
+                    if last_paid and last_paid[:7] == now.strftime("%Y-%m"):
+                        continue
+                        
+                    account = await db.accounts.find_one({"account_id": order["account_id"]})
+                    if not account:
+                        continue
+                        
+                    # Calculate amount to pay
+                    # Mock: random amount between 100 - max_amount
+                    max_amt = float(order.get("max_amount") or 500.0)
+                    amount_to_pay = min(max_amt, random.uniform(100.0, max_amt))
+                    
+                    if float(account.get("balance", 0)) >= amount_to_pay:
+                        txn_ref = f"AUTOBILL-{uuid.uuid4().hex[:8].upper()}"
+                        await create_ledger_entry(
+                            db,
+                            account["account_id"],
+                            "DEBIT",
+                            "AUTO_BILL_PAYMENT",
+                            amount_to_pay,
+                            txn_ref,
+                            order["user_id"],
+                            f"Otomatik Fatura: {order['provider']} / {order['subscriber_no']}",
+                        )
+                        # Mark as paid this month
+                        await db.auto_bill_payments.update_one(
+                            {"_id": order["_id"]},
+                            {"$set": {"last_paid_date": now.strftime("%Y-%m-%d")}}
+                        )
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"Error in process_auto_bills_loop: {e}", file=sys.stderr)
+            
+        await asyncio.sleep(3600)  # Sleep 1 hour
+
 
 
 app = FastAPI(title="FinBank Banking Service", version="1.0.0", lifespan=lifespan)
