@@ -33,6 +33,7 @@ export default function AdminPanelPage() {
     const [loading, setLoading] = useState(true);
     const [detailLoading, setDetailLoading] = useState(false);
     const [roleFilter, setRoleFilter] = useState("");
+    const [searchQ, setSearchQ] = useState("");
     const [page, setPage] = useState(1);
     const [busyKey, setBusyKey] = useState("");
 
@@ -40,7 +41,7 @@ export default function AdminPanelPage() {
         if (tab === "overview") loadOverview();
         if (tab === "users") loadUsers();
         if (tab === "messages") loadMessages();
-    }, [tab, page, roleFilter]);
+    }, [tab, page, roleFilter]); // searchQ is intentionally left out to trigger on search button
 
     const loadOverview = async () => {
         setLoading(true);
@@ -68,6 +69,7 @@ export default function AdminPanelPage() {
         try {
             const params = { page, limit: PAGE_SIZE };
             if (roleFilter) params.role = roleFilter;
+            if (searchQ) params.q = searchQ;
             const res = await adminApi.listUsers(params);
             setUsers(res.data?.data || []);
             setUserTotal(res.data?.total || 0);
@@ -170,9 +172,14 @@ export default function AdminPanelPage() {
                     </div>
                     <p style={{ margin: 0, color: "var(--text-secondary)" }}>Kullanici, kuyruk ve mesaj akislarini merkezi olarak yonetin.</p>
                 </div>
-                <button type="button" onClick={() => { if (tab === "overview") loadOverview(); if (tab === "users") loadUsers(); if (tab === "messages") loadMessages(); }} style={secondaryButtonStyle}>
-                    <RefreshCw size={16} /> Yenile
-                </button>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    <button type="button" onClick={() => toast.success("Sistem bakima alindi (Mock)")} style={dangerGhostStyle}>
+                        <AlertTriangle size={16} /> Sistemi Duraklat
+                    </button>
+                    <button type="button" onClick={() => { setPage(1); if (tab === "overview") loadOverview(); if (tab === "users") loadUsers(); if (tab === "messages") loadMessages(); }} style={secondaryButtonStyle}>
+                        <RefreshCw size={16} /> Yenile
+                    </button>
+                </div>
             </div>
 
             <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
@@ -248,16 +255,22 @@ export default function AdminPanelPage() {
             {!loading && tab === "users" ? (
                 <div style={{ display: "grid", gridTemplateColumns: selectedUser ? "1.2fr 0.8fr" : "1fr", gap: 16 }}>
                     <Panel title="Kullanici yonetimi" subtitle="Rol, durum ve silme islemleri">
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-                            {roles.map((role) => (
-                                <button key={role.key || "all"} type="button" onClick={() => { setPage(1); setRoleFilter(role.key); }} style={filterButtonStyle(roleFilter === role.key)}>{role.label}</button>
-                            ))}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                {roles.map((role) => (
+                                    <button key={role.key || "all"} type="button" onClick={() => { setPage(1); setRoleFilter(role.key); }} style={filterButtonStyle(roleFilter === role.key)}>{role.label}</button>
+                                ))}
+                            </div>
+                            <div style={{ display: "flex", gap: 8 }}>
+                                <input placeholder="E-posta veya hesap ara..." value={searchQ} onChange={(e) => setSearchQ(e.target.value)} style={inputStyle} onKeyDown={(e) => { if (e.key === "Enter") { setPage(1); loadUsers(); } }} />
+                                <button type="button" onClick={() => { setPage(1); loadUsers(); }} style={secondaryButtonStyle}>Ara</button>
+                            </div>
                         </div>
                         <div style={{ overflowX: "auto" }}>
                             <table style={{ width: "100%", borderCollapse: "collapse" }}>
                                 <thead>
                                     <tr style={{ borderBottom: "1px solid var(--border-color)" }}>
-                                        {['Kullanici','Rol','Durum','Kayit','Aksiyon'].map((head) => <th key={head} style={tableHeadStyle}>{head}</th>)}
+                                        {['Kullanici', 'Rol', 'Durum', 'Kayit', 'Aksiyon'].map((head) => <th key={head} style={tableHeadStyle}>{head}</th>)}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -365,16 +378,17 @@ function formatMoney(value) { return new Intl.NumberFormat("tr-TR", { style: "cu
 function formatDate(value) { return value ? new Date(value).toLocaleDateString("tr-TR") : "-"; }
 function formatDateTime(value) { return value ? new Date(value).toLocaleString("tr-TR") : "-"; }
 function iconBox(background, color) { return { width: 40, height: 40, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", background, color }; }
-function tabButtonStyle(active) { return { border: "none", borderRadius: 999, padding: "10px 16px", cursor: "pointer", fontWeight: 700, background: active ? "linear-gradient(135deg, #111827, #2563eb)" : "var(--bg-secondary)", color: active ? "#fff" : "var(--text-secondary)" }; }
-function filterButtonStyle(active) { return { border: "1px solid var(--border-color)", borderRadius: 999, padding: "8px 12px", cursor: "pointer", fontWeight: 700, background: active ? "rgba(37,99,235,0.12)" : "var(--bg-secondary)", color: active ? "#2563eb" : "var(--text-secondary)" }; }
-const panelStyle = { background: "var(--bg-card)", borderRadius: 20, border: "1px solid var(--border-color)", padding: 18 };
-const rowStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, border: "1px solid var(--border-color)", background: "var(--bg-secondary)", marginBottom: 10 };
+function tabButtonStyle(active) { return { border: "none", borderRadius: 999, padding: "10px 16px", cursor: "pointer", fontWeight: 700, background: active ? "linear-gradient(135deg, #111827, #2563eb)" : "var(--bg-secondary)", color: active ? "#fff" : "var(--text-secondary)", transition: "all 0.2s ease" }; }
+function filterButtonStyle(active) { return { border: "1px solid var(--border-color)", borderRadius: 999, padding: "8px 12px", cursor: "pointer", fontWeight: 700, background: active ? "rgba(37,99,235,0.12)" : "var(--bg-secondary)", color: active ? "#2563eb" : "var(--text-secondary)", transition: "all 0.2s ease" }; }
+const panelStyle = { background: "var(--bg-card)", borderRadius: 20, border: "1px solid var(--border-color)", padding: 18, transition: "all 0.2s ease" };
+const rowStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, border: "1px solid var(--border-color)", background: "var(--bg-secondary)", marginBottom: 10, transition: "transform 0.2s ease" };
 const infoStyle = { padding: 14, borderRadius: 16, border: "1px solid var(--border-color)", background: "var(--bg-secondary)", display: "grid", gap: 6 };
-const messageStyle = (highlight) => ({ padding: 14, borderRadius: 16, border: highlight ? "1px solid rgba(245,158,11,0.35)" : "1px solid var(--border-color)", background: highlight ? "rgba(245,158,11,0.05)" : "var(--bg-secondary)", marginBottom: 10 });
-const secondaryButtonStyle = { display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 12, border: "1px solid var(--border-color)", background: "var(--bg-secondary)", color: "var(--text-primary)", fontWeight: 700, cursor: "pointer" };
-const successButtonStyle = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #10b981, #34d399)", color: "#fff", fontWeight: 700, cursor: "pointer" };
-const dangerButtonStyle = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #ef4444, #f87171)", color: "#fff", fontWeight: 700, cursor: "pointer" };
-const dangerGhostStyle = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 12, border: "1px solid rgba(239,68,68,0.18)", background: "rgba(239,68,68,0.08)", color: "#ef4444", fontWeight: 700, cursor: "pointer" };
+const messageStyle = (highlight) => ({ padding: 14, borderRadius: 16, border: highlight ? "1px solid rgba(245,158,11,0.35)" : "1px solid var(--border-color)", background: highlight ? "rgba(245,158,11,0.05)" : "var(--bg-secondary)", marginBottom: 10, transition: "all 0.2s ease" });
+const secondaryButtonStyle = { display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 12, border: "1px solid var(--border-color)", background: "var(--bg-secondary)", color: "var(--text-primary)", fontWeight: 700, cursor: "pointer", transition: "all 0.2s ease" };
+const successButtonStyle = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #10b981, #34d399)", color: "#fff", fontWeight: 700, cursor: "pointer", transition: "all 0.2s ease" };
+const dangerButtonStyle = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #ef4444, #f87171)", color: "#fff", fontWeight: 700, cursor: "pointer", transition: "all 0.2s ease" };
+const dangerGhostStyle = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 12, border: "1px solid rgba(239,68,68,0.18)", background: "rgba(239,68,68,0.08)", color: "#ef4444", fontWeight: 700, cursor: "pointer", transition: "all 0.2s ease" };
 const tableHeadStyle = { padding: "12px 14px", textAlign: "left", fontSize: 12, color: "var(--text-secondary)", fontWeight: 700 };
 const tableCellStyle = { padding: "14px", fontSize: 13, verticalAlign: "top" };
-const selectStyle = { borderRadius: 10, border: "1px solid var(--border-color)", padding: "8px 10px", background: "var(--bg-secondary)", color: "var(--text-primary)" };
+const inputStyle = { padding: "8px 14px", borderRadius: 12, border: "1px solid var(--border-color)", background: "var(--bg-secondary)", color: "var(--text-primary)", outline: "none", transition: "border-color 0.2s ease" };
+const selectStyle = { borderRadius: 10, border: "1px solid var(--border-color)", padding: "8px 10px", background: "var(--bg-secondary)", color: "var(--text-primary)", outline: "none" };

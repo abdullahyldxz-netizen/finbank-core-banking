@@ -14,6 +14,7 @@ import {
     ShieldCheck,
     UserRound,
     XCircle,
+    FileText,
 } from "lucide-react";
 import { employeeApi, messagesApi } from "../services/api";
 
@@ -158,9 +159,14 @@ export default function EmployeePanelPage() {
                     </div>
                     <p style={{ margin: 0, color: "var(--text-secondary)" }}>KYC kuyrugu, musteri arama ve mesaj cevaplarini tek panelden yonetin.</p>
                 </div>
-                <button type="button" onClick={() => { if (tab === "overview") loadOverview(); if (tab === "kyc") loadPendingKyc(); if (tab === "customers") loadCustomers(); if (tab === "messages") loadMessages(); }} style={secondaryButtonStyle}>
-                    <RefreshCw size={16} /> Yenile
-                </button>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    <button type="button" onClick={() => toast.success("Rapor disari aktariliyor... (Mock)")} style={secondaryButtonStyle}>
+                        <FileText size={16} /> Rapor Al
+                    </button>
+                    <button type="button" onClick={() => { if (tab === "overview") loadOverview(); if (tab === "kyc") loadPendingKyc(); if (tab === "customers") loadCustomers(); if (tab === "messages") loadMessages(); }} style={secondaryButtonStyle}>
+                        <RefreshCw size={16} /> Yenile
+                    </button>
+                </div>
             </div>
 
             <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
@@ -225,7 +231,10 @@ export default function EmployeePanelPage() {
                                     <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>TC: {customer.national_id} - Tel: {customer.phone}</div>
                                     <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{customer.user?.email || "-"}</div>
                                 </div>
-                                <button type="button" onClick={() => openCustomer(customer.customer_id)} style={secondaryButtonStyle}><Eye size={14} /> Detay</button>
+                                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                    <button type="button" onClick={() => toast.success("Belgeler aciliyor... (Mock)")} style={secondaryButtonStyle}><Eye size={14} /> Belgeler</button>
+                                    <button type="button" onClick={() => openCustomer(customer.customer_id)} style={secondaryButtonStyle}><UserRound size={14} /> Detay</button>
+                                </div>
                             </div>
                             <textarea value={notes[customer.customer_id] || ""} onChange={(event) => setNotes((current) => ({ ...current, [customer.customer_id]: event.target.value }))} placeholder="Karar notu (opsiyonel)" style={textAreaStyle} />
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
@@ -319,14 +328,14 @@ function formatNumber(value) { return new Intl.NumberFormat("tr-TR").format(Numb
 function formatMoney(value) { return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(Number(value || 0)); }
 function formatDateTime(value) { return value ? new Date(value).toLocaleString("tr-TR") : "-"; }
 function iconBox(background, color) { return { width: 40, height: 40, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", background, color }; }
-function tabButtonStyle(active) { return { border: "none", borderRadius: 999, padding: "10px 16px", cursor: "pointer", fontWeight: 700, background: active ? "linear-gradient(135deg, #111827, #2563eb)" : "var(--bg-secondary)", color: active ? "#fff" : "var(--text-secondary)" }; }
-const panelStyle = { background: "var(--bg-card)", borderRadius: 20, border: "1px solid var(--border-color)", padding: 18 };
-const rowStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, border: "1px solid var(--border-color)", background: "var(--bg-secondary)", marginBottom: 10 };
-const cardStyle = { padding: 14, borderRadius: 16, border: "1px solid var(--border-color)", background: "var(--bg-secondary)", marginBottom: 10 };
+function tabButtonStyle(active) { return { border: "none", borderRadius: 999, padding: "10px 16px", cursor: "pointer", fontWeight: 700, background: active ? "linear-gradient(135deg, #111827, #2563eb)" : "var(--bg-secondary)", color: active ? "#fff" : "var(--text-secondary)", transition: "all 0.2s ease" }; }
+const panelStyle = { background: "var(--bg-card)", borderRadius: 20, border: "1px solid var(--border-color)", padding: 18, transition: "all 0.2s ease" };
+const rowStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, border: "1px solid var(--border-color)", background: "var(--bg-secondary)", marginBottom: 10, transition: "transform 0.2s ease" };
+const cardStyle = { padding: 14, borderRadius: 16, border: "1px solid var(--border-color)", background: "var(--bg-secondary)", marginBottom: 10, transition: "transform 0.2s ease" };
 const infoStyle = { padding: 14, borderRadius: 16, border: "1px solid var(--border-color)", background: "var(--bg-secondary)", display: "grid", gap: 6 };
-const messageStyle = (highlight) => ({ padding: 14, borderRadius: 16, border: highlight ? "1px solid rgba(245,158,11,0.35)" : "1px solid var(--border-color)", background: highlight ? "rgba(245,158,11,0.05)" : "var(--bg-secondary)", marginBottom: 10 });
-const secondaryButtonStyle = { display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 12, border: "1px solid var(--border-color)", background: "var(--bg-secondary)", color: "var(--text-primary)", fontWeight: 700, cursor: "pointer" };
-const successButtonStyle = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #10b981, #34d399)", color: "#fff", fontWeight: 700, cursor: "pointer" };
-const dangerButtonStyle = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #ef4444, #f87171)", color: "#fff", fontWeight: 700, cursor: "pointer" };
-const inputStyle = { padding: "12px 14px", borderRadius: 12, border: "1px solid var(--border-color)", background: "var(--bg-secondary)", color: "var(--text-primary)" };
-const textAreaStyle = { width: "100%", minHeight: 88, resize: "vertical", padding: "12px 14px", borderRadius: 12, border: "1px solid var(--border-color)", background: "var(--bg-card)", color: "var(--text-primary)" };
+const messageStyle = (highlight) => ({ padding: 14, borderRadius: 16, border: highlight ? "1px solid rgba(245,158,11,0.35)" : "1px solid var(--border-color)", background: highlight ? "rgba(245,158,11,0.05)" : "var(--bg-secondary)", marginBottom: 10, transition: "all 0.2s ease" });
+const secondaryButtonStyle = { display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 12, border: "1px solid var(--border-color)", background: "var(--bg-secondary)", color: "var(--text-primary)", fontWeight: 700, cursor: "pointer", transition: "all 0.2s ease" };
+const successButtonStyle = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #10b981, #34d399)", color: "#fff", fontWeight: 700, cursor: "pointer", transition: "all 0.2s ease" };
+const dangerButtonStyle = { display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #ef4444, #f87171)", color: "#fff", fontWeight: 700, cursor: "pointer", transition: "all 0.2s ease" };
+const inputStyle = { padding: "12px 14px", borderRadius: 12, border: "1px solid var(--border-color)", background: "var(--bg-secondary)", color: "var(--text-primary)", outline: "none", transition: "border-color 0.2s ease" };
+const textAreaStyle = { width: "100%", minHeight: 88, resize: "vertical", padding: "12px 14px", borderRadius: 12, border: "1px solid var(--border-color)", background: "var(--bg-card)", color: "var(--text-primary)", outline: "none", transition: "border-color 0.2s ease" };
