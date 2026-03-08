@@ -4,14 +4,14 @@ FinBank - Admin API Routes
 from fastapi import APIRouter, Depends, Query, HTTPException
 from typing import Optional
 from app.core.database import get_database
-from app.core.security import require_admin
+from app.core.security import require_management
 from datetime import datetime, timezone, timedelta
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
 @router.get("/system/stats")
 async def get_system_stats(
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_management),
     db=Depends(get_database),
 ):
     """Admin: Get comprehensive system statistics for the CEO Dashboard."""
@@ -101,7 +101,7 @@ async def list_users(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     role: Optional[str] = None,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_management),
     db=Depends(get_database),
 ):
     skip = (page - 1) * limit
@@ -131,7 +131,7 @@ async def list_users(
 async def change_user_role(
     user_id: str,
     payload: dict,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_management),
     db=Depends(get_database)
 ):
     role = payload.get("role")
@@ -147,7 +147,7 @@ async def change_user_role(
 async def toggle_user_status(
     user_id: str,
     payload: dict,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_management),
     db=Depends(get_database)
 ):
     is_active = payload.get("is_active", True)
@@ -159,7 +159,7 @@ async def toggle_user_status(
 @router.delete("/users/{user_id}")
 async def delete_user(
     user_id: str,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_management),
     db=Depends(get_database)
 ):
     res = await db.users.delete_one({"user_id": user_id})
@@ -171,7 +171,7 @@ async def delete_user(
 async def all_messages(
     page: int = Query(1, ge=1),
     limit: int = Query(30, ge=1, le=100),
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_management),
     db=Depends(get_database)
 ):
     skip = (page - 1) * limit
@@ -183,4 +183,38 @@ async def all_messages(
         "page": page,
         "limit": limit,
         "data": msgs
+    }
+
+@router.get("/users/{user_id}")
+async def get_user_detail(
+    user_id: str,
+    current_user: dict = Depends(require_management),
+    db=Depends(get_database)
+):
+    user = await db.users.find_one({"user_id": user_id}, {"hashed_password": 0})
+    if not user:
+        raise HTTPException(404, "User not found")
+    user["_id"] = str(user["_id"])
+    return {"user": user}
+
+@router.get("/all-bills")
+async def all_bills(
+    page: int = Query(1, ge=1),
+    limit: int = Query(30, ge=1, le=100),
+    current_user: dict = Depends(require_management),
+    db=Depends(get_database)
+):
+    skip = (page - 1) * limit
+    total = await db.bills.count_documents({})
+    bills_list = await db.bills.find({}).skip(skip).limit(limit).sort("paid_at", -1).to_list(None)
+    
+    for b in bills_list:
+        if "_id" in b:
+            b["_id"] = str(b["_id"])
+            
+    return {
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "data": bills_list
     }

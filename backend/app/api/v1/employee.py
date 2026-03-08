@@ -33,7 +33,7 @@ async def employee_dashboard(current_user: dict = Depends(require_employee), db=
     }
 
 @router.get("/kyc/pending")
-async def list_pending_kyc(current_user: dict = Depends(require_employee), db=Depends(get_database)):
+async def list_pending_kyc(current_user: dict = Depends(require_any_internal), db=Depends(get_database)):
     """List customers pending KYC approval."""
     customers = await db.customers.find({"status": "pending_kyc"}).sort("created_at", -1).to_list(50)
     result = []
@@ -49,7 +49,7 @@ async def list_pending_kyc(current_user: dict = Depends(require_employee), db=De
 @router.get("/kyc/all")
 async def list_all_kyc(
     status: Optional[str] = None,
-    current_user: dict = Depends(require_employee),
+    current_user: dict = Depends(require_any_internal),
     db=Depends(get_database)
 ):
     """List all customers with optional status filter."""
@@ -65,7 +65,7 @@ async def list_all_kyc(
 async def kyc_decision(
     customer_id: str,
     body: KYCDecisionRequest,
-    current_user: dict = Depends(require_employee),
+    current_user: dict = Depends(require_any_internal),
     db=Depends(get_database)
 ):
     """Approve or reject KYC for a customer."""

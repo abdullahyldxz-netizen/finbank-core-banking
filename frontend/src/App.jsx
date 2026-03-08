@@ -213,6 +213,26 @@ export default function App() {
                             <EmployeePanelPage />
                         </ProtectedRoute>
                     } />
+                    <Route path="/employee/cards" element={
+                        <ProtectedRoute allowedRoles={['employee']}>
+                            <CardsPage />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/employee/payment-requests" element={
+                        <ProtectedRoute allowedRoles={['employee']}>
+                            <PaymentRequestsPage />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/employee/easy-address" element={
+                        <ProtectedRoute allowedRoles={['employee']}>
+                            <EasyAddressPage />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/employee/history" element={
+                        <ProtectedRoute allowedRoles={['employee']}>
+                            <TransferHistoryPage />
+                        </ProtectedRoute>
+                    } />
                 </Route>
 
                 {/* ── CEO / Executive Area ── */}

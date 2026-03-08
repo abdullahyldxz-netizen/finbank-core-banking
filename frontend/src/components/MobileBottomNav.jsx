@@ -55,22 +55,17 @@ export default function MobileBottomNav() {
     }
 
     return (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex justify-around items-center h-16 px-2 pb-safe z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+        <div className="bottom-nav">
             {links.map((link) => {
                 const Icon = link.icon;
                 return (
                     <NavLink
                         key={link.path}
                         to={link.path}
-                        className={({ isActive }) =>
-                            `flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${isActive
-                                ? "text-red-600 dark:text-red-500"
-                                : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                            }`
-                        }
+                        className={({ isActive }) => `bottom-nav-item ${isActive ? "active" : ""}`}
                     >
                         <Icon size={20} className="mb-0.5" />
-                        <span className="text-[10px] font-medium tracking-wide">{link.label}</span>
+                        <span>{link.label}</span>
                     </NavLink>
                 );
             })}

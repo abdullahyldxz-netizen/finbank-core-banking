@@ -17,7 +17,7 @@ import {
     UserX,
     Users,
 } from "lucide-react";
-import { adminApi } from "../services/api";
+import { adminApi, employeeApi, approvalsApi } from "../services/api";
 
 const ROLE_OPTIONS = ["customer", "employee", "admin", "ceo"];
 const PAGE_SIZE = 12;
@@ -29,6 +29,8 @@ export default function AdminPanelPage() {
     const [userTotal, setUserTotal] = useState(0);
     const [messages, setMessages] = useState([]);
     const [bills, setBills] = useState([]);
+    const [approvals, setApprovals] = useState([]);
+    const [kycRequests, setKycRequests] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [detailLoading, setDetailLoading] = useState(false);
@@ -41,6 +43,7 @@ export default function AdminPanelPage() {
         if (tab === "overview") loadOverview();
         if (tab === "users") loadUsers();
         if (tab === "messages") loadMessages();
+        if (tab === "approvals") loadApprovals();
     }, [tab, page, roleFilter]); // searchQ is intentionally left out to trigger on search button
 
     const loadOverview = async () => {
@@ -93,6 +96,48 @@ export default function AdminPanelPage() {
             toast.error("Mesaj ve odeme listeleri yuklenemedi.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadApprovals = async () => {
+        setLoading(true);
+        try {
+            const [appRes, kycRes] = await Promise.all([
+                approvalsApi.getApprovals(),
+                employeeApi.pendingKYC()
+            ]);
+            setApprovals(appRes.data || []);
+            setKycRequests(kycRes.data || []);
+        } catch {
+            toast.error("Onay listeleri yuklenemedi.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleKycDecision = async (id, decision) => {
+        setBusyKey(`kyc-${id}`);
+        try {
+            await employeeApi.kycDecision(id, { decision, notes: "Admin panelinden eklendi." });
+            toast.success("KYC karari islendi.");
+            loadApprovals();
+        } catch (error) {
+            toast.error(error.response?.data?.detail || "KYC guncellemesi basarisiz.");
+        } finally {
+            setBusyKey("");
+        }
+    };
+
+    const handleApprovalReview = async (id, action) => {
+        setBusyKey(`appr-${id}`);
+        try {
+            await approvalsApi.reviewApproval(id, { action, notes: "Admin panelinden islendi." });
+            toast.success("Islem basarili.");
+            loadApprovals();
+        } catch (error) {
+            toast.error(error.response?.data?.detail || "Onay islemi basarisiz.");
+        } finally {
+            setBusyKey("");
         }
     };
 
@@ -176,7 +221,7 @@ export default function AdminPanelPage() {
                     <button type="button" onClick={() => toast.success("Sistem bakima alindi (Mock)")} style={dangerGhostStyle}>
                         <AlertTriangle size={16} /> Sistemi Duraklat
                     </button>
-                    <button type="button" onClick={() => { setPage(1); if (tab === "overview") loadOverview(); if (tab === "users") loadUsers(); if (tab === "messages") loadMessages(); }} style={secondaryButtonStyle}>
+                    <button type="button" onClick={() => { setPage(1); if (tab === "overview") loadOverview(); if (tab === "users") loadUsers(); if (tab === "messages") loadMessages(); if (tab === "approvals") loadApprovals(); }} style={secondaryButtonStyle}>
                         <RefreshCw size={16} /> Yenile
                     </button>
                 </div>
@@ -187,8 +232,9 @@ export default function AdminPanelPage() {
                     { id: "overview", label: "Overview" },
                     { id: "users", label: "Users" },
                     { id: "messages", label: "Messages" },
+                    { id: "approvals", label: "Onaylar & KYC" },
                 ].map((item) => (
-                    <button key={item.id} type="button" onClick={() => setTab(item.id)} style={tabButtonStyle(tab === item.id)}>{item.label}</button>
+                    <button key={item.id} type="button" onClick={() => { setPage(1); setTab(item.id) }} style={tabButtonStyle(tab === item.id)}>{item.label}</button>
                 ))}
             </div>
 
@@ -336,6 +382,67 @@ export default function AdminPanelPage() {
                                 <strong>{formatMoney(bill.amount)}</strong>
                             </div>
                         ))}
+                    </Panel>
+                </div>
+            ) : null}
+
+            {!loading && tab === "approvals" ? (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
+                    <Panel title="Bekleyen KYC Talepleri" subtitle="Hesap onayi bekleyen musteriler">
+                        {kycRequests.length === 0 ? <Empty message="Bekleyen KYC talebi yok." /> : (
+                            <div style={{ display: "grid", gap: 10 }}>
+                                {kycRequests.map(k => (
+                                    <div key={k.customer_id} style={rowStyle}>
+                                        <div>
+                                            <div style={{ fontWeight: 700 }}>{k.full_name || k.user?.email || "Isim belirtilmemis"}</div>
+                                            <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>TC: {k.national_id} | E-Posta: {k.email || k.user?.email}</div>
+                                        </div>
+                                        <div style={{ display: "flex", gap: 8 }}>
+                                            <button
+                                                style={successButtonStyle}
+                                                disabled={busyKey === `kyc-${k.customer_id}`}
+                                                onClick={() => handleKycDecision(k.customer_id, "approved")}
+                                            ><UserCheck size={14} /> Onayla</button>
+                                            <button
+                                                style={dangerButtonStyle}
+                                                disabled={busyKey === `kyc-${k.customer_id}`}
+                                                onClick={() => handleKycDecision(k.customer_id, "rejected")}
+                                            ><UserX size={14} /> Reddet</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Panel>
+
+                    <Panel title="Riskli ve Buyuk Islemler (Approvals)" subtitle="Islem onayi bekleyen talepler (Orn. Limit Artisi, Buyuk Transfer)">
+                        {approvals.length === 0 ? <Empty message="Bekleyen islem onayi yok." /> : (
+                            <div style={{ display: "grid", gap: 10 }}>
+                                {approvals.map(a => (
+                                    <div key={a.id} style={rowStyle}>
+                                        <div>
+                                            <div style={{ fontWeight: 700 }}>{a.user_name} - {a.request_type}</div>
+                                            <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>
+                                                {formatMoney(a.amount)} | Risk: <strong style={{ color: a.risk_score === "HIGH" ? "#ef4444" : a.risk_score === "MEDIUM" ? "#f59e0b" : "#10b981" }}>{a.risk_score}</strong> | Durum: {a.status}
+                                            </div>
+                                            {a.description && <div style={{ fontSize: 12, marginTop: 4 }}>{a.description}</div>}
+                                        </div>
+                                        <div style={{ display: "flex", gap: 8 }}>
+                                            <button
+                                                style={successButtonStyle}
+                                                disabled={busyKey === `appr-${a.id}`}
+                                                onClick={() => handleApprovalReview(a.id, "APPROVE")}
+                                            ><UserCheck size={14} /> Onayla</button>
+                                            <button
+                                                style={dangerButtonStyle}
+                                                disabled={busyKey === `appr-${a.id}`}
+                                                onClick={() => handleApprovalReview(a.id, "REJECT")}
+                                            ><UserX size={14} /> Reddet</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </Panel>
                 </div>
             ) : null}

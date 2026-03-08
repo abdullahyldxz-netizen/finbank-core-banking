@@ -11,6 +11,7 @@ import {
     Trash2,
 } from "lucide-react";
 import { accountApi, transactionApi } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 const TAB_CONFIG = [
     { id: "deposit", label: "Para yatir", icon: ArrowDownLeft, color: "var(--success)" },
@@ -25,6 +26,8 @@ const ALIAS_TYPE_OPTIONS = [
 ];
 
 export default function TransferPage() {
+    const { user } = useAuth();
+    const rolePath = `/${user?.role || 'customer'}`;
     const [accounts, setAccounts] = useState([]);
     const [easyAddresses, setEasyAddresses] = useState([]);
     const [balances, setBalances] = useState({});
@@ -209,7 +212,7 @@ export default function TransferPage() {
                     </div>
                     <div style={{ display: "flex", gap: 10 }}>
                         <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setReceipt(null)}>Yeni islem</button>
-                        <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => (window.location.href = "/customer/ledger")}>Hesap defteri</button>
+                        <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => (window.location.href = `${rolePath}/ledger`)}>Hesap defteri</button>
                     </div>
                 </div>
             </div>
@@ -394,7 +397,7 @@ export default function TransferPage() {
                         <button
                             className="btn btn-outline"
                             type="button"
-                            onClick={() => window.location.href = "/customer/easy-address"}
+                            onClick={() => window.location.href = `${rolePath}/easy-address`}
                             style={{ width: "100%", display: "flex", justifyContent: "center", gap: 8, padding: "12px 0" }}
                         >
                             <Plus size={18} /> Kolay Adres Yönetimi

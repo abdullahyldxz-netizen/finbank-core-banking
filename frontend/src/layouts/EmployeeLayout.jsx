@@ -28,10 +28,12 @@ export default function EmployeeLayout() {
 
     const links = [
         { to: "/employee/dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { to: "/employee/portal", label: "Musteri ops", icon: Briefcase },
-        { to: "/employee/customers", label: "Musteriler", icon: Users },
+        { to: "/employee/portal", label: "Müşteri Ops", icon: Briefcase },
+        { to: "/employee/customers", label: "Müşteriler", icon: Users },
         { to: "/employee/accounts", label: "Hesaplar", icon: CreditCard },
         { to: "/employee/transfer", label: "Transfer", icon: ArrowLeftRight },
+        { to: "/employee/cards", label: "Kartlar", icon: CreditCard },
+        { to: "/employee/payment-requests", label: "Para İste", icon: ArrowLeftRight },
         { to: "/employee/ledger", label: "Defter", icon: BookOpen },
         { to: "/employee/messages", label: "Mesajlar", icon: MessageSquare },
     ];
