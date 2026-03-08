@@ -64,6 +64,14 @@ cd infra && docker compose up --build
 | Audit logs | **PCI DSS** compliance logging | Our audit captures who/what/when/outcome, similar to PCI DSS Requirement 10 (track all access). |
 | Transfer validation | **EMV** transaction authorization | Amount limits, account ownership checks, and balance verification mirror EMV's card authorization flow. |
 
+### Phase 2 Features (Advanced Banking)
+- **Virtual & Physical Cards**: Card generation, cvv/expiry masking, online/contactless limits, debt payment, freezing.
+- **Easy Address (FAST)**: Sending money via Phone, Email, or National ID instead of IBAN.
+- **Payment Requests & Split Bill (Alman Usulü)**: Requesting money from others and splitting expenses equally.
+- **Auto Bill Payments**: Setting up recurring, limit-based automated utility bill payments.
+- **QR Operations**: Generating and scanning QR codes for fast transfers.
+- **Premium UI/UX**: Admin and Employee panels with real-time search, animated transitions, and mock system actions.
+
 ### Technology Trade-Off Decisions
 
 | Decision | Chosen | Alternative | Rationale |
