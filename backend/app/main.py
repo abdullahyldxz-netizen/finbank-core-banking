@@ -3,7 +3,7 @@
 FinBank & FinHR - Next Generation Core Banking SaaS
 Copyright (C) 2026 Abdullah Yildiz. All Rights Reserved.
 
-Developer: Abdullah Yildiz (abdullahyldxz)
+Developer: MoodLee
 Architecture: Modular Monolith
 =========================================================
 """
