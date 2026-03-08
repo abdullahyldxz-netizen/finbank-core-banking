@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import {
     Users, FileCheck, Activity, Search,
-    CheckCircle, XCircle, Clock, Eye,
-    ArrowUpRight, ArrowDownRight,
+    ArrowUpRight, ArrowDownRight, ShieldAlert,
+    CheckCircle, XCircle, Clock, Eye
 } from "lucide-react";
-import { customerApi, accountApi, ledgerApi, transactionApi } from "../../services/api";
+import { customerApi, accountApi, ledgerApi, transactionApi, approvalsApi } from "../../services/api";
 import toast from "react-hot-toast";
+import ApprovalCard from "../../components/ApprovalCard";
+import { ListSkeleton } from "../../components/SkeletonLoader";
 
 export default function EmployeePortalPage() {
     const [customers, setCustomers] = useState([]);
@@ -15,6 +17,7 @@ export default function EmployeePortalPage() {
     const [stats, setStats] = useState({ total: 0, pending: 0, verified: 0, todayTx: 0 });
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("overview");
+    const [approvals, setApprovals] = useState([]);
 
     // 360 Modal States
     const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -42,17 +45,20 @@ export default function EmployeePortalPage() {
 
     const loadData = async () => {
         try {
-            const [cusRes, ledRes] = await Promise.allSettled([
+            const [cusRes, ledRes, appRes] = await Promise.allSettled([
                 customerApi.listAll(),
                 ledgerApi.getEntries({ limit: 10 }),
+                approvalsApi.getApprovals("PENDING_EMPLOYER"),
             ]);
 
             const cusList = cusRes.status === "fulfilled" ? (Array.isArray(cusRes.value.data) ? cusRes.value.data : []) : [];
             const txList = ledRes.status === "fulfilled" ? (Array.isArray(ledRes.value.data) ? ledRes.value.data : []) : [];
+            const appList = appRes.status === "fulfilled" ? (Array.isArray(appRes.value.data) ? appRes.value.data : []) : [];
 
             setCustomers(cusList);
             setFilteredCustomers(cusList);
             setRecentTx(txList.slice(0, 8));
+            setApprovals(appList);
 
             setStats({
                 total: cusList.length,
@@ -77,6 +83,17 @@ export default function EmployeePortalPage() {
             loadData();
         } catch (err) {
             toast.error(err.response?.data?.detail || "İşlem başarısız.");
+        }
+    };
+
+    const handleApprovalAction = async (approvalId, actionStr) => {
+        try {
+            // actionStr is "APPROVE" or "REJECT"
+            await approvalsApi.reviewApproval(approvalId, { action: actionStr, notes: "" });
+            toast.success(actionStr === "APPROVE" ? "Talep üst onaya (CEO) gönderildi." : "Talep reddedildi.");
+            loadData();
+        } catch (err) {
+            toast.error(err.response?.data?.detail || "Onay işlemi başarısız.");
         }
     };
 
@@ -122,12 +139,16 @@ export default function EmployeePortalPage() {
         { id: "overview", label: "📊 Genel Bakış", icon: Activity },
         { id: "customers", label: "👥 Müşteriler", icon: Users },
         { id: "kyc", label: "📋 KYC Onay", icon: FileCheck },
+        { id: "approvals", label: "📋 Bekleyen Onaylar", icon: ShieldAlert },
     ];
 
     if (loading) {
         return (
-            <div className="page-container" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
-                <div className="spinner" style={{ width: 40, height: 40 }} />
+            <div className="page-container" style={{ maxWidth: 800 }}>
+                <div style={{ marginBottom: 20 }}>
+                    <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>Yükleniyor...</h1>
+                </div>
+                <ListSkeleton count={4} />
             </div>
         );
     }
@@ -350,6 +371,30 @@ export default function EmployeePortalPage() {
                                 </button>
                             </div>
                         </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Approvals Tab */}
+            {activeTab === "approvals" && (
+                <div className="card">
+                    <div className="card-header" style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: 12 }}>
+                        <h2 className="card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <ShieldAlert size={18} /> Yüksek Riskli İşlem Onayları
+                        </h2>
+                    </div>
+                    {approvals.length === 0 ? (
+                        <div style={{ padding: 32, textAlign: "center", color: "var(--text-muted)" }}>
+                            Şu an bekleyen onay talebi bulunmuyor.
+                        </div>
+                    ) : approvals.map((req, i) => (
+                        <ApprovalCard
+                            key={req.id || i}
+                            request={req}
+                            onApprove={(id) => handleApprovalAction(id, "APPROVE")}
+                            onReject={(id) => handleApprovalAction(id, "REJECT")}
+                            isCeo={false}
+                        />
                     ))}
                 </div>
             )}

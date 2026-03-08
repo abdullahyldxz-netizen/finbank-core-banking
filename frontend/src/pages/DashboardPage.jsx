@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import QuickActionsWidget from "../components/QuickActionsWidget";
-import SkeletonLoader from "../components/SkeletonLoader";
 
 export default function DashboardPage() {
     const { user, isAdmin } = useAuth();

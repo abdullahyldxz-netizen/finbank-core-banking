@@ -162,8 +162,8 @@ async def transfer(
     db=Depends(get_database),
 ):
     """Transfer money between accounts (internal transfer)."""
-    if not body.to_account_id and not body.target_iban:
-        raise HTTPException(status_code=400, detail="Either 'to_account_id' or 'target_iban' is required.")
+    if not body.to_account_id and not body.target_iban and not body.target_alias:
+        raise HTTPException(status_code=400, detail="Either 'to_account_id', 'target_iban', or 'target_alias' is required.")
 
     # Validate source account ownership
     from_account = await _validate_account_ownership(
@@ -174,8 +174,16 @@ async def transfer(
     to_account = None
     if body.to_account_id:
         to_account = await db.accounts.find_one({"account_id": body.to_account_id})
-    else:
+    elif body.target_iban:
         to_account = await db.accounts.find_one({"iban": body.target_iban})
+        if to_account:
+            body.to_account_id = to_account["account_id"]
+    elif body.target_alias:
+        # Resolve Easy Address
+        address = await db.easy_addresses.find_one({"alias_value": body.target_alias})
+        if not address:
+            raise HTTPException(status_code=404, detail="Easy address (target_alias) not found")
+        to_account = await db.accounts.find_one({"account_id": address["account_id"]})
         if to_account:
             body.to_account_id = to_account["account_id"]
 

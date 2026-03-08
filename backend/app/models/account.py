@@ -33,6 +33,7 @@ class AccountResponse(BaseModel):
     account_type: str
     currency: str
     status: str
+    balance: Optional[float] = 0.0
     created_at: datetime
 
 

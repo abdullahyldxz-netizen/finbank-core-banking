@@ -14,6 +14,7 @@ import {
     Users,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import MobileBottomNav from "../components/MobileBottomNav";
 
 export default function EmployeeLayout() {
     const { user, logout } = useAuth();
@@ -97,19 +98,7 @@ export default function EmployeeLayout() {
                 </button>
             </div>
 
-            <nav className="bottom-nav" role="navigation" aria-label="Employee mobile navigation">
-                {links.slice(0, 4).map((link) => (
-                    <Link
-                        key={link.to}
-                        to={link.to}
-                        className={`bottom-nav-item ${isActive(link.to) ? "active" : ""}`}
-                        aria-current={isActive(link.to) ? "page" : undefined}
-                    >
-                        <link.icon size={20} />
-                        <span>{link.label}</span>
-                    </Link>
-                ))}
-            </nav>
+            <MobileBottomNav />
 
             <main className="layout-main">
                 <Outlet />

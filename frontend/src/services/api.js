@@ -53,9 +53,11 @@ export const accountApi = {
     listAll: () => api.get("/accounts/all"),
     listByCustomer: (customerId) => api.get(`/accounts/customer/${customerId}`),
     getDebitCards: () => api.get("/accounts/debit-cards"),
-    listEasyAddresses: () => api.get("/accounts/easy-addresses"),
-    createEasyAddress: (data) => api.post("/accounts/easy-addresses", data),
-    deleteEasyAddress: (id) => api.delete(`/accounts/easy-addresses/${id}`),
+    // Easy Address
+    listEasyAddresses: () => api.get("/easy-address/"),
+    createEasyAddress: (data) => api.post("/easy-address/", data),
+    deleteEasyAddress: (type, value) => api.delete(`/easy-address/${type}/${value}`),
+    resolveEasyAddress: (alias_value) => api.get(`/easy-address/resolve?alias_value=${alias_value}`),
 };
 
 export const paymentRequestsApi = {
@@ -80,6 +82,13 @@ export const ledgerApi = {
 
 export const auditApi = {
     getLogs: (params) => api.get("/audit/", { params }),
+};
+
+// --- Multi-Layer Approvals API ---
+export const approvalsApi = {
+    createApproval: (data) => api.post("/approvals/", data),
+    getApprovals: (status) => api.get("/approvals/", { params: { status } }),
+    reviewApproval: (id, data) => api.patch(`/approvals/${id}/review`, data),
 };
 
 export const messagesApi = {

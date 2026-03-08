@@ -118,19 +118,25 @@ async def list_my_accounts(
     """List all accounts owned by the current user."""
     cursor = db.accounts.find({"user_id": current_user["user_id"]}).sort("created_at", -1)
     accounts = await cursor.to_list(50)
-    return [
-        AccountResponse(
-            id=a["account_id"],
-            account_number=a["account_number"],
-            iban=a["iban"],
-            customer_id=a["customer_id"],
-            account_type=a["account_type"],
-            currency=a["currency"],
-            status=a["status"],
-            created_at=a["created_at"],
+    
+    ledger = LedgerService(db)
+    result = []
+    for a in accounts:
+        balance = await ledger.get_balance(a["account_id"])
+        result.append(
+            AccountResponse(
+                id=a["account_id"],
+                account_number=a["account_number"],
+                iban=a["iban"],
+                customer_id=a["customer_id"],
+                account_type=a["account_type"],
+                currency=a["currency"],
+                status=a["status"],
+                balance=balance,
+                created_at=a["created_at"],
+            )
         )
-        for a in accounts
-    ]
+    return result
 
 
 @router.get("/{account_id}/balance", response_model=AccountBalanceResponse)
@@ -169,19 +175,25 @@ async def list_all_accounts(
     """Admin: List all accounts in the system."""
     cursor = db.accounts.find().sort("created_at", -1)
     accounts = await cursor.to_list(200)
-    return [
-        AccountResponse(
-            id=a["account_id"],
-            account_number=a["account_number"],
-            iban=a["iban"],
-            customer_id=a["customer_id"],
-            account_type=a["account_type"],
-            currency=a["currency"],
-            status=a["status"],
-            created_at=a["created_at"],
+    
+    ledger = LedgerService(db)
+    result = []
+    for a in accounts:
+        balance = await ledger.get_balance(a["account_id"])
+        result.append(
+            AccountResponse(
+                id=a["account_id"],
+                account_number=a["account_number"],
+                iban=a["iban"],
+                customer_id=a["customer_id"],
+                account_type=a["account_type"],
+                currency=a["currency"],
+                status=a["status"],
+                balance=balance,
+                created_at=a["created_at"],
+            )
         )
-        for a in accounts
-    ]
+    return result
 
 
 @router.get("/customer/{customer_id}", response_model=list[AccountResponse])
@@ -193,19 +205,25 @@ async def list_customer_accounts(
     """Staff: List all accounts owned by a specific customer."""
     cursor = db.accounts.find({"customer_id": customer_id}).sort("created_at", -1)
     accounts = await cursor.to_list(50)
-    return [
-        AccountResponse(
-            id=a["account_id"],
-            account_number=a["account_number"],
-            iban=a["iban"],
-            customer_id=a["customer_id"],
-            account_type=a["account_type"],
-            currency=a["currency"],
-            status=a["status"],
-            created_at=a["created_at"],
+    
+    ledger = LedgerService(db)
+    result = []
+    for a in accounts:
+        balance = await ledger.get_balance(a["account_id"])
+        result.append(
+            AccountResponse(
+                id=a["account_id"],
+                account_number=a["account_number"],
+                iban=a["iban"],
+                customer_id=a["customer_id"],
+                account_type=a["account_type"],
+                currency=a["currency"],
+                status=a["status"],
+                balance=balance,
+                created_at=a["created_at"],
+            )
         )
-        for a in accounts
-    ]
+    return result
 
 
 @router.patch("/{account_id}/toggle-freeze")

@@ -17,7 +17,8 @@ import time
 from app.core.config import settings
 from app.core.database import connect_to_mongo, close_mongo_connection
 from app.core.logging import configure_logging
-from app.api.v1 import auth, customers, accounts, transactions, ledger, audit, messages, bills, admin, cards, exchange, employee
+from app.api.v1 import accounts, transactions, auth, employee, admin, customers, bills, cards, \
+    exchange, ledger, audit, approvals, messages, easy_addresses, payment_requests, auto_bills
 
 # ── Configure Logging ──
 configure_logging()
@@ -122,8 +123,12 @@ app.include_router(messages.router, prefix=API_PREFIX)
 app.include_router(bills.router, prefix=API_PREFIX)
 app.include_router(admin.router, prefix=API_PREFIX)
 app.include_router(employee.router, prefix=API_PREFIX)
+app.include_router(approvals.router, prefix=API_PREFIX)
+app.include_router(easy_addresses.router, prefix=API_PREFIX + "/easy-address", tags=["easy-address"])
 app.include_router(cards.router, prefix=API_PREFIX + "/cards", tags=["cards"])
 app.include_router(exchange.router, prefix=API_PREFIX + "/exchange", tags=["exchange"])
+app.include_router(payment_requests.router, prefix="/api/v1/payment-requests", tags=["Payment Requests"])
+app.include_router(auto_bills.router, prefix="/api/v1/auto-bills", tags=["Auto Bills"])
 
 
 # ── Root ──

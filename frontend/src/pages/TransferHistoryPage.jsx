@@ -7,8 +7,12 @@ import {
     History,
     Loader2,
     Search,
+    SplitSquareHorizontal,
+    XCircle,
+    RefreshCw
 } from "lucide-react";
-import { transactionApi } from "../services/api";
+import { transactionApi, paymentRequestsApi } from "../services/api";
+import { toast } from "react-hot-toast";
 
 const CATEGORY_OPTIONS = [
     { value: "", label: "Tum kategoriler" },
@@ -44,6 +48,11 @@ export default function TransferHistoryPage() {
     const [total, setTotal] = useState(0);
     const [filter, setFilter] = useState({ type: "", category: "", search: "" });
     const limit = 20;
+
+    // Split Bill modal
+    const [splitModal, setSplitModal] = useState({ show: false, entry: null });
+    const [splitForm, setSplitForm] = useState({ target_alias: "", amount: "", description: "" });
+    const [splitLoading, setSplitLoading] = useState(false);
 
     const fetchHistory = useCallback(async () => {
         setLoading(true);
@@ -99,6 +108,33 @@ export default function TransferHistoryPage() {
         .filter((entry) => entry.type === "DEBIT")
         .reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
     const hasNextPage = page * limit < total;
+
+    const openSplitModal = (entry) => {
+        setSplitForm({
+            target_alias: "",
+            amount: (Number(entry.amount) / 2).toFixed(2),
+            description: `Ortak odeme: ${entry.description || CATEGORY_LABELS[entry.category] || "Islem"}`
+        });
+        setSplitModal({ show: true, entry });
+    };
+
+    const handleSplitSubmit = async (e) => {
+        e.preventDefault();
+        setSplitLoading(true);
+        try {
+            await paymentRequestsApi.create({
+                target_alias: splitForm.target_alias,
+                amount: Number(splitForm.amount),
+                description: splitForm.description
+            });
+            toast.success("Ödeme isteği gönderildi.");
+            setSplitModal({ show: false, entry: null });
+        } catch (error) {
+            toast.error(error.response?.data?.detail || "İstek gönderilemedi.");
+        } finally {
+            setSplitLoading(false);
+        }
+    };
 
     return (
         <div style={{ padding: 24, maxWidth: 960, margin: "0 auto" }}>
@@ -204,8 +240,21 @@ export default function TransferHistoryPage() {
                                         </div>
                                     </div>
                                 </div>
-                                <div style={{ fontSize: 16, fontWeight: 800, color: isCredit ? "#10b981" : "#ef4444" }}>
-                                    {isCredit ? "+" : "-"}{formatMoney(entry.amount)}
+                                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+                                    <div style={{ fontSize: 16, fontWeight: 800, color: isCredit ? "#10b981" : "#ef4444" }}>
+                                        {isCredit ? "+" : "-"}{formatMoney(entry.amount)}
+                                    </div>
+                                    {!isCredit ? (
+                                        <button
+                                            onClick={() => openSplitModal(entry)}
+                                            style={{
+                                                background: "var(--bg-secondary)", border: "1px solid var(--border-color)",
+                                                borderRadius: 8, padding: "4px 8px", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, cursor: "pointer", color: "var(--text-primary)"
+                                            }}
+                                        >
+                                            <SplitSquareHorizontal size={14} /> Bolus
+                                        </button>
+                                    ) : null}
                                 </div>
                             </div>
                         );
@@ -224,6 +273,61 @@ export default function TransferHistoryPage() {
                     Sonraki
                 </button>
             </div>
+
+            {/* Split Modal */}
+            {splitModal.show && (
+                <div style={modalOverlayStyle}>
+                    <div style={modalContentStyle}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                            <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>Harcamayi Bolus</h2>
+                            <button onClick={() => setSplitModal({ show: false, entry: null })} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer" }}>
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+                        <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+                            Bu islem icin baska birinden odeme isteyebilirsiniz. Tutar otomatik olarak ikiye bolunmustur, isterseniz degistirebilirsiniz.
+                        </p>
+                        <form onSubmit={handleSplitSubmit} style={{ display: "grid", gap: 16 }}>
+                            <div>
+                                <label style={labelStyle}>Kimden Isteniyor? (Telefon, E-Posta, TCKN)</label>
+                                <input
+                                    className="form-input"
+                                    value={splitForm.target_alias}
+                                    onChange={e => setSplitForm(prev => ({ ...prev, target_alias: e.target.value }))}
+                                    placeholder="Orn: 5XX1234567"
+                                    required
+                                    style={inputStyle}
+                                />
+                            </div>
+                            <div>
+                                <label style={labelStyle}>Tutar (Karsidan istenecek)</label>
+                                <input
+                                    className="form-input"
+                                    type="number"
+                                    step="0.01" min="0.01"
+                                    value={splitForm.amount}
+                                    onChange={e => setSplitForm(prev => ({ ...prev, amount: e.target.value }))}
+                                    required
+                                    style={inputStyle}
+                                />
+                            </div>
+                            <div>
+                                <label style={labelStyle}>Aciklama</label>
+                                <input
+                                    className="form-input"
+                                    value={splitForm.description}
+                                    onChange={e => setSplitForm(prev => ({ ...prev, description: e.target.value }))}
+                                    required
+                                    style={inputStyle}
+                                />
+                            </div>
+                            <button type="submit" disabled={splitLoading} style={primaryButtonStyle}>
+                                {splitLoading ? <RefreshCw size={18} style={{ animation: "spin 1s linear infinite" }} /> : "Istegi Gonder"}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             <style>{"@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }"}</style>
         </div>
@@ -249,6 +353,52 @@ const inputStyle = {
     fontSize: 14,
     outline: "none",
     boxSizing: "border-box",
+};
+
+const labelStyle = {
+    display: "block",
+    fontSize: 13,
+    fontWeight: 600,
+    color: "var(--text-secondary)",
+    marginBottom: 8,
+};
+
+const modalOverlayStyle = {
+    position: "fixed",
+    top: 0, left: 0, right: 0, bottom: 0,
+    background: "rgba(0,0,0,0.5)",
+    backdropFilter: "blur(4px)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    zIndex: 999
+};
+
+const modalContentStyle = {
+    background: "var(--bg-card)",
+    borderRadius: 24,
+    padding: 24,
+    width: "100%",
+    maxWidth: 480,
+    boxShadow: "0 20px 40px rgba(0,0,0,0.2)"
+};
+
+const primaryButtonStyle = {
+    background: "#f59e0b",
+    color: "#fff",
+    border: "none",
+    padding: "12px 20px",
+    borderRadius: 14,
+    fontSize: 14,
+    fontWeight: 700,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    transition: "opacity 0.2s",
+    marginTop: 8
 };
 
 const secondaryButtonStyle = {

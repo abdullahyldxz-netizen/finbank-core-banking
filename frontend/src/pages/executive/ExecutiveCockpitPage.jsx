@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import {
     DollarSign, Users, TrendingUp, Activity, Clock,
-    ArrowUpRight, ArrowDownRight, Eye, AlertTriangle, Shield, Search, CheckCircle, XCircle
+    ArrowUpRight, ArrowDownRight, Eye, AlertTriangle, Shield, Search, CheckCircle, XCircle, ShieldAlert
 } from "lucide-react";
-import { customerApi, accountApi, ledgerApi, auditApi, adminApi } from "../../services/api";
+import { customerApi, accountApi, ledgerApi, auditApi, adminApi, approvalsApi } from "../../services/api";
 import toast from "react-hot-toast";
+import ApprovalCard from "../../components/ApprovalCard";
+import { ListSkeleton } from "../../components/SkeletonLoader";
 
 export default function ExecutiveCockpitPage() {
     const [stats, setStats] = useState({
@@ -20,7 +22,8 @@ export default function ExecutiveCockpitPage() {
     // CEO Management States
     const [users, setUsers] = useState([]);
     const [searchQ, setSearchQ] = useState("");
-    const [tab, setTab] = useState("dashboard"); // dashboard, users
+    const [tab, setTab] = useState("dashboard"); // dashboard, users, approvals
+    const [approvals, setApprovals] = useState([]);
 
     useEffect(() => {
         if (tab === "dashboard") loadData();
@@ -38,17 +41,19 @@ export default function ExecutiveCockpitPage() {
 
     const loadData = async () => {
         try {
-            const [customersRes, accountsRes, ledgerRes, auditRes] = await Promise.allSettled([
+            const [customersRes, accountsRes, ledgerRes, auditRes, appRes] = await Promise.allSettled([
                 customerApi.listAll(),
                 accountApi.listAll(),
                 ledgerApi.getEntries({ limit: 10 }),
                 auditApi.getLogs({ limit: 5 }),
+                approvalsApi.getApprovals("PENDING_CEO"),
             ]);
 
             const customers = customersRes.status === "fulfilled" ? customersRes.value.data : [];
             const accounts = accountsRes.status === "fulfilled" ? accountsRes.value.data : [];
             const ledger = ledgerRes.status === "fulfilled" ? ledgerRes.value.data : [];
             const audit = auditRes.status === "fulfilled" ? auditRes.value.data : [];
+            const appList = appRes.status === "fulfilled" ? appRes.value.data : [];
 
             const totalDeposit = Array.isArray(accounts)
                 ? accounts.reduce((sum, a) => sum + (a.balance || 0), 0)
@@ -64,10 +69,21 @@ export default function ExecutiveCockpitPage() {
             });
             setRecentTx(todayTx.slice(0, 8));
             setRecentAudit(Array.isArray(audit) ? audit.slice(0, 5) : []);
+            setApprovals(Array.isArray(appList) ? appList : []);
         } catch (err) {
             console.error(err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleApprovalAction = async (approvalId, actionStr) => {
+        try {
+            await approvalsApi.reviewApproval(approvalId, { action: actionStr, notes: "" });
+            toast.success(actionStr === "APPROVE" ? "Talep onaylandı ve işleme alındı." : "Talep nihai olarak reddedildi.");
+            loadData();
+        } catch (err) {
+            toast.error(err.response?.data?.detail || "Onay işlemi başarısız.");
         }
     };
 
@@ -82,8 +98,11 @@ export default function ExecutiveCockpitPage() {
 
     if (loading) {
         return (
-            <div className="page-container" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
-                <div className="spinner" style={{ width: 40, height: 40 }} />
+            <div className="page-container" style={{ maxWidth: 1200 }}>
+                <div style={{ marginBottom: 20 }}>
+                    <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>Yükleniyor...</h1>
+                </div>
+                <ListSkeleton count={4} />
             </div>
         );
     }
@@ -106,6 +125,12 @@ export default function ExecutiveCockpitPage() {
                     </button>
                     <button onClick={() => setTab("users")} style={tabStyle(tab === "users")}>
                         <Shield size={16} /> Kullanici Yönetimi
+                    </button>
+                    <button onClick={() => setTab("approvals")} style={tabStyle(tab === "approvals")}>
+                        <ShieldAlert size={16} /> Son Onaylar
+                        {approvals.length > 0 && (
+                            <span style={{ background: "var(--danger)", color: "#fff", padding: "2px 6px", borderRadius: 10, fontSize: 10, marginLeft: 6 }}>{approvals.length}</span>
+                        )}
                     </button>
                 </div>
             </div>
@@ -157,6 +182,29 @@ export default function ExecutiveCockpitPage() {
                                 </div>
                             ))}
                     </div>
+                </div>
+            )}
+
+            {tab === "approvals" && (
+                <div className="card fade-in">
+                    <div className="card-header" style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: 16, marginBottom: 16 }}>
+                        <h2 className="card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <ShieldAlert size={18} /> CEO Son Onay Bekleyen İşlemler
+                        </h2>
+                    </div>
+                    {approvals.length === 0 ? (
+                        <div style={{ padding: 32, textAlign: "center", color: "var(--text-muted)" }}>
+                            Şu an onay bekleyen kritik bir işlem bulunmuyor.
+                        </div>
+                    ) : approvals.map((req, i) => (
+                        <ApprovalCard
+                            key={req.id || i}
+                            request={req}
+                            onApprove={(id) => handleApprovalAction(id, "APPROVE")}
+                            onReject={(id) => handleApprovalAction(id, "REJECT")}
+                            isCeo={true}
+                        />
+                    ))}
                 </div>
             )}
 

@@ -18,7 +18,7 @@ import {
     ShieldCheck,
     Smartphone,
 } from "lucide-react";
-import { accountApi, cardsApi } from "../../services/api";
+import { accountApi, cardsApi, approvalsApi } from "../../services/api";
 
 export default function CardsPage() {
     const [cards, setCards] = useState([]);
@@ -114,6 +114,35 @@ export default function CardsPage() {
             await loadData();
         } catch (error) {
             toast.error(error.response?.data?.detail || "Sanal kart olusturulamadi.");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleApplyLimit = async () => {
+        if (!selectedCardId) return;
+        const requestedLimitStr = window.prompt("Yeni talep ettiğiniz kredi limitini giriniz:");
+        if (!requestedLimitStr) return;
+        const requestedLimit = parseFloat(requestedLimitStr);
+        if (isNaN(requestedLimit) || requestedLimit <= 0) {
+            toast.error("Geçerli bir tutar giriniz.");
+            return;
+        }
+
+        setActionLoading(true);
+        try {
+            await approvalsApi.createApproval({
+                request_type: "CREDIT_LIMIT_INCREASE",
+                amount: requestedLimit,
+                currency: "TRY",
+                description: "Kredi Kartı Limit Artış Talebi",
+                metadata: {
+                    card_id: selectedCardId
+                }
+            });
+            toast.success("Limit artış talebiniz alındı ve onaya gönderildi.");
+        } catch (error) {
+            toast.error(error.response?.data?.detail || "Talep gönderilemedi.");
         } finally {
             setActionLoading(false);
         }
@@ -383,6 +412,22 @@ export default function CardsPage() {
                                     </InteractiveChip>
                                 </div>
                             </div>
+
+                            {!selectedCard.is_virtual && (
+                                <div className="card" style={{ marginTop: 16 }}>
+                                    <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>Limit İşlemleri</h3>
+                                    <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 16 }}>
+                                        Daha yüksek bir limite ihtiyacınız varsa limit artış talebinde bulunabilirsiniz. Talebiniz incelemeye alınacaktır.
+                                    </p>
+                                    <button
+                                        onClick={handleApplyLimit}
+                                        disabled={actionLoading}
+                                        style={{ ...primaryActionStyle, background: "var(--accent)" }}
+                                    >
+                                        <ArrowUpRight size={18} /> Limit Artırım Talebi
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         <div>

@@ -99,12 +99,22 @@ export default function QRPage() {
 
         setProcessing(true);
         try {
-            await transactionApi.transfer({
-                source_account_id: selectedAccount,
-                target: scanResult.alias,
+            const target = scanResult.alias.trim();
+            const payload = {
+                from_account_id: selectedAccount,
                 amount: Number(scanResult.amount),
                 description: scanResult.desc ? `QR: ${scanResult.desc}` : "QR ile Ödeme"
-            });
+            };
+
+            if (target.toUpperCase().startsWith("TR")) {
+                payload.target_iban = target;
+            } else if (/^[a-f\d]{24}$/i.test(target)) {
+                payload.to_account_id = target;
+            } else {
+                payload.target_alias = target;
+            }
+
+            await transactionApi.transfer(payload);
             toast.success("Ödeme başarıyla gerçekleşti!");
             setScanResult(null);
             setActiveTab("receive");

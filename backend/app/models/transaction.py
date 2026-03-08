@@ -25,6 +25,7 @@ class TransferRequest(BaseModel):
     from_account_id: str
     to_account_id: Optional[str] = Field(None, description="Target account ID")
     target_iban: Optional[str] = Field(None, description="Target IBAN if account ID is not provided")
+    target_alias: Optional[str] = Field(None, description="Target alias (Easy Address) if account ID or IBAN is not provided")
     amount: float = Field(..., gt=0, le=1000000, description="Amount to transfer")
     description: Optional[str] = "Internal Transfer"
 

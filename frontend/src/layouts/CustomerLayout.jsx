@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import NotificationBell from "../components/NotificationBell";
+import MobileBottomNav from "../components/MobileBottomNav";
 import {
     LayoutDashboard, CreditCard, ArrowLeftRight,
     BookOpen, LogOut, User, Settings, Moon, Sun, MessageSquare,
@@ -89,20 +90,7 @@ export default function CustomerLayout() {
                 </div>
             </aside>
 
-            {/* ── Mobile Bottom Navigation ── */}
-            <nav className="bottom-nav" role="navigation" aria-label="Mobil alt menü">
-                {links.slice(0, 4).map((link) => (
-                    <Link
-                        key={link.to}
-                        to={link.to}
-                        className={`bottom-nav-item ${isActive(link.to) ? 'active' : ''}`}
-                        aria-current={isActive(link.to) ? 'page' : undefined}
-                    >
-                        <link.icon size={28} />
-                        <span style={{ fontSize: 10, marginTop: 4, fontWeight: isActive(link.to) ? 700 : 500 }}>{link.label}</span>
-                    </Link>
-                ))}
-            </nav>
+            <MobileBottomNav />
 
             <main className="layout-main">
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 16 }} className="mobile-only-header">

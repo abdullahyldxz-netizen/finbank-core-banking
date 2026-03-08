@@ -5,6 +5,7 @@ import {
     LayoutDashboard, BarChart3, Shield,
     LogOut, Crown, Moon, Sun, MessageSquare,
 } from "lucide-react";
+import MobileBottomNav from "../components/MobileBottomNav";
 
 export default function ExecutiveLayout() {
     const { user, logout } = useAuth();
@@ -85,20 +86,7 @@ export default function ExecutiveLayout() {
                 </button>
             </div>
 
-            {/* ── Mobile Bottom Navigation ── */}
-            <nav className="bottom-nav" role="navigation" aria-label="Mobil alt menü">
-                {links.map((link) => (
-                    <Link
-                        key={link.to}
-                        to={link.to}
-                        className={`bottom-nav-item ${isActive(link.to) ? 'active' : ''}`}
-                        aria-current={isActive(link.to) ? 'page' : undefined}
-                    >
-                        <link.icon size={20} />
-                        <span>{link.label}</span>
-                    </Link>
-                ))}
-            </nav>
+            <MobileBottomNav />
 
             <main className="layout-main">
                 <Outlet />
