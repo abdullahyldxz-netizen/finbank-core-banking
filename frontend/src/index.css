@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ═══════════════════════════════════════════════════
    FinBank - Mini Core Banking System
    Premium Dark Theme CSS

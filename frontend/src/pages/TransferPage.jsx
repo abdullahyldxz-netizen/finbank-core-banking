@@ -9,20 +9,21 @@ import {
     Landmark,
     Plus,
     Trash2,
+    ChevronRight,
+    ChevronLeft,
+    Wallet,
+    User,
+    CreditCard,
+    ArrowRight
 } from "lucide-react";
 import { accountApi, transactionApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import { motion, AnimatePresence } from "framer-motion";
 
 const TAB_CONFIG = [
-    { id: "deposit", label: "Para yatir", icon: ArrowDownLeft, color: "var(--success)" },
-    { id: "withdraw", label: "Para cek", icon: ArrowUpRight, color: "var(--danger)" },
-    { id: "transfer", label: "Transfer", icon: ArrowLeftRight, color: "var(--accent)" },
-];
-
-const ALIAS_TYPE_OPTIONS = [
-    { value: "phone", label: "Telefon" },
-    { value: "email", label: "E-posta" },
-    { value: "national_id", label: "TC Kimlik" },
+    { id: "deposit", label: "Para Yatır", icon: ArrowDownLeft, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+    { id: "withdraw", label: "Para Çek", icon: ArrowUpRight, color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20" },
+    { id: "transfer", label: "Transfer", icon: ArrowLeftRight, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
 ];
 
 export default function TransferPage() {
@@ -35,11 +36,14 @@ export default function TransferPage() {
     const [loading, setLoading] = useState(false);
     const [bootLoading, setBootLoading] = useState(true);
     const [receipt, setReceipt] = useState(null);
+
+    // Transfer Wizard State
+    const [transferStep, setTransferStep] = useState(1);
+
+    // Forms
     const [depositForm, setDepositForm] = useState({ account_id: "", amount: "", description: "" });
     const [withdrawForm, setWithdrawForm] = useState({ account_id: "", amount: "", description: "" });
     const [transferForm, setTransferForm] = useState({ from_account_id: "", target: "", amount: "", description: "" });
-    const [aliasForm, setAliasForm] = useState({ account_id: "", alias_type: "phone", alias_value: "", label: "" });
-    const [aliasSaving, setAliasSaving] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -76,13 +80,9 @@ export default function TransferPage() {
                 setDepositForm((prev) => ({ ...prev, account_id: accountId }));
                 setWithdrawForm((prev) => ({ ...prev, account_id: accountId }));
                 setTransferForm((prev) => ({ ...prev, from_account_id: accountId }));
-                setAliasForm((prev) => ({ ...prev, account_id: accountId }));
             }
         } catch (error) {
-            toast.error("Hesap ve kolay adres verileri yuklenemedi.");
-            setAccounts([]);
-            setEasyAddresses([]);
-            setBalances({});
+            toast.error("Hesap verileri yüklenemedi.");
         } finally {
             setBootLoading(false);
         }
@@ -107,11 +107,12 @@ export default function TransferPage() {
                 ...depositForm,
                 amount: Number(depositForm.amount),
             });
-            toast.success("Para yatırma talebiniz alındı. Çalışan onayından sonra hesabınıza geçecektir.");
+            toast.success("Para yatırma talebiniz alındı. Onaydan sonra hesabınıza geçecektir.");
             setDepositForm((prev) => ({ ...prev, amount: "", description: "" }));
             await loadData();
+            showReceipt("Para Yatırma", depositForm.amount, depositForm.description);
         } catch (error) {
-            toast.error(error.response?.data?.detail || "Para yatirma basarisiz.");
+            toast.error(error.response?.data?.detail || "İşlem başarısız.");
         } finally {
             setLoading(false);
         }
@@ -125,18 +126,17 @@ export default function TransferPage() {
                 ...withdrawForm,
                 amount: Number(withdrawForm.amount),
             });
-            showReceipt("Para cekme", withdrawForm.amount, withdrawForm.description);
+            showReceipt("Para Çekme", withdrawForm.amount, withdrawForm.description);
             setWithdrawForm((prev) => ({ ...prev, amount: "", description: "" }));
             await loadData();
         } catch (error) {
-            toast.error(error.response?.data?.detail || "Para cekme basarisiz.");
+            toast.error(error.response?.data?.detail || "İşlem başarısız.");
         } finally {
             setLoading(false);
         }
     };
 
-    const handleTransfer = async (event) => {
-        event.preventDefault();
+    const handleTransfer = async () => {
         setLoading(true);
         try {
             const target = transferForm.target.trim();
@@ -155,26 +155,12 @@ export default function TransferPage() {
             await transactionApi.transfer(payload);
             showReceipt("Transfer", transferForm.amount, transferForm.description, target);
             setTransferForm((prev) => ({ ...prev, target: "", amount: "", description: "" }));
+            setTransferStep(1);
             await loadData();
         } catch (error) {
-            toast.error(error.response?.data?.detail || "Transfer basarisiz.");
+            toast.error(error.response?.data?.detail || "Transfer başarısız.");
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleCreateAlias = async (event) => {
-        event.preventDefault();
-        setAliasSaving(true);
-        try {
-            await accountApi.createEasyAddress(aliasForm);
-            toast.success("Kolay adres kaydedildi.");
-            setAliasForm((prev) => ({ ...prev, alias_value: "", label: "" }));
-            await loadData();
-        } catch (error) {
-            toast.error(error.response?.data?.detail || "Kolay adres kaydedilemedi.");
-        } finally {
-            setAliasSaving(false);
         }
     };
 
@@ -184,303 +170,517 @@ export default function TransferPage() {
             toast.success("Kolay adres silindi.");
             await loadData();
         } catch (error) {
-            toast.error(error.response?.data?.detail || "Kolay adres silinemedi.");
+            toast.error("Silinemedi.");
+        }
+    };
+
+    // Wizard Next Step Checks
+    const handleNextStep = () => {
+        if (transferStep === 1) {
+            if (!transferForm.from_account_id) return toast.error("Gönderen hesabı seçin.");
+            setTransferStep(2);
+        } else if (transferStep === 2) {
+            if (!transferForm.target) return toast.error("Alıcı IBAN, Kolay Adres veya Hesap No girin.");
+            setTransferStep(3);
+        } else if (transferStep === 3) {
+            if (!transferForm.amount || Number(transferForm.amount) <= 0) return toast.error("Geçerli bir tutar girin.");
+            setTransferStep(4);
         }
     };
 
     if (bootLoading) {
-        return <div className="loading-container"><div className="spinner" /></div>;
-    }
-
-    if (receipt) {
         return (
-            <div>
-                <div className="page-header" style={{ textAlign: "center" }}>
-                    <h1>Islem tamamlandi</h1>
-                </div>
-                <div className="card" style={{ maxWidth: 460, margin: "0 auto", textAlign: "center", padding: 32 }}>
-                    <div style={{ width: 66, height: 66, borderRadius: "50%", margin: "0 auto 16px", background: "rgba(34,197,94,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <CheckCircle size={34} style={{ color: "var(--success)" }} />
-                    </div>
-                    <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Basarili</h2>
-                    <p style={{ color: "var(--text-secondary)", marginBottom: 20 }}>{receipt.type} islemi tamamlandi.</p>
-                    <div style={{ fontSize: 34, fontWeight: 900, marginBottom: 24 }}>{formatMoney(receipt.amount)}</div>
-                    <div style={{ background: "var(--bg-secondary)", borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
-                        <ReceiptRow label="Islem" value={receipt.type} />
-                        <ReceiptRow label="Tarih" value={receipt.date} />
-                        <ReceiptRow label="Referans" value={receipt.ref} copyable />
-                        {receipt.targetLabel ? <ReceiptRow label="Alici" value={receipt.targetLabel} /> : null}
-                        {receipt.description ? <ReceiptRow label="Aciklama" value={receipt.description} /> : null}
-                    </div>
-                    <div style={{ display: "flex", gap: 10 }}>
-                        <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setReceipt(null)}>Yeni islem</button>
-                        <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => (window.location.href = `${rolePath}/ledger`)}>Hesap defteri</button>
-                    </div>
-                </div>
+            <div className="flex justify-center items-center min-h-[60vh]">
+                <div className="w-12 h-12 border-4 border-white/10 border-t-blue-500 rounded-full animate-spin"></div>
             </div>
         );
     }
 
+    if (receipt) {
+        return (
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="max-w-2xl mx-auto p-6 pt-12 text-center"
+            >
+                <div className="bg-deepblue-900/60 backdrop-blur-xl border border-white/10 rounded-3xl p-10 shadow-[0_0_50px_rgba(16,185,129,0.15)] overflow-hidden relative">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+
+                    <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1, rotate: [0, 10, -10, 0] }}
+                        transition={{ duration: 0.6, type: "spring" }}
+                        className="w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.4)] mb-8 relative z-10"
+                    >
+                        <CheckCircle size={48} className="text-white" />
+
+                        {/* Flying Money Particles */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 0, x: -20 }}
+                            animate={{ opacity: [0, 1, 0], y: -80, x: -40 }}
+                            transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 0.5 }}
+                            className="absolute text-emerald-300 font-bold"
+                        >₺</motion.div>
+                        <motion.div
+                            initial={{ opacity: 0, y: 0, x: 20 }}
+                            animate={{ opacity: [0, 1, 0], y: -60, x: 50 }}
+                            transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1, delay: 0.5 }}
+                            className="absolute text-emerald-300 font-bold"
+                        >₺</motion.div>
+                    </motion.div>
+
+                    <h2 className="text-3xl font-black text-white tracking-tight mb-2 relative z-10">İşlem Başarılı</h2>
+                    <p className="text-white/60 mb-8 relative z-10">{receipt.type} başarıyla gerçekleştirildi.</p>
+
+                    <div className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300 mb-10 tracking-tight relative z-10">
+                        {formatMoney(receipt.amount)}
+                    </div>
+
+                    <div className="bg-black/20 rounded-2xl p-6 text-left border border-white/5 space-y-4 mb-10 relative z-10">
+                        <ReceiptRow label="İşlem Türü" value={receipt.type} />
+                        <ReceiptRow label="Tarih" value={receipt.date} />
+                        <ReceiptRow label="Referans" value={receipt.ref} copyable />
+                        {receipt.targetLabel && <ReceiptRow label="Alıcı / Hedef" value={receipt.targetLabel} />}
+                        {receipt.description && <ReceiptRow label="Açıklama" value={receipt.description} />}
+                    </div>
+
+                    <div className="flex gap-4 relative z-10">
+                        <button
+                            className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold py-4 rounded-xl transition-all shadow-lg"
+                            onClick={() => { setReceipt(null); setTransferStep(1); }}
+                        >
+                            Yeni İşlem
+                        </button>
+                        <button
+                            className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold py-4 rounded-xl transition-all"
+                            onClick={() => (window.location.href = `${rolePath}/ledger`)}
+                        >
+                            Dekont Görüntüle
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+        );
+    }
+
     return (
-        <div style={{ paddingBottom: 64 }}>
-            <div className="page-header" style={{ textAlign: "center", marginBottom: 28 }}>
-                <h1 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -1 }}>Transfer ve para islemleri</h1>
-                <p style={{ fontSize: 16 }}>Kolay adres, IBAN ve hesap no ile para hareketlerinizi yonetin.</p>
+        <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 pb-24">
+            {/* Header */}
+            <div className="text-center mb-10">
+                <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-3">Para Transferleri</h1>
+                <p className="text-white/60 text-sm md:text-base max-w-xl mx-auto">
+                    Hesaplarınız arası işlem yapın, IBAN veya Kolay Adres ile 7/24 hızlıca para gönderin.
+                </p>
             </div>
 
-            <div className="card" style={{ marginBottom: 18, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                <div>
-                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 4 }}>Toplam bakiye</div>
-                    <div style={{ fontSize: 28, fontWeight: 900 }}>{formatMoney(totalBalance)}</div>
+            {/* Quick Balance Overview */}
+            <div className="bg-gradient-to-br from-blue-900/40 to-indigo-900/40 border border-white/10 backdrop-blur-xl rounded-3xl p-6 mb-8 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="text-center md:text-left">
+                    <div className="text-sm font-semibold text-blue-200/70 uppercase tracking-widest mb-1">Toplam Varlıklar</div>
+                    <div className="text-3xl font-black text-white">{formatMoney(totalBalance)}</div>
                 </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div className="flex flex-wrap items-center justify-center md:justify-end gap-3">
                     {accounts.map((account) => {
                         const accountId = account.id || account.account_id;
                         return (
-                            <div key={accountId} style={{ padding: "8px 12px", borderRadius: 12, background: "var(--bg-secondary)", fontSize: 12, fontWeight: 600 }}>
-                                {account.account_type === 'credit' ? `Kredi Kartı Hesabı (${account.account_number.slice(-4)})` : (account.account_name || account.account_number)} - {formatMoney(balances[accountId])}
+                            <div key={accountId} className="px-4 py-2 bg-black/20 rounded-xl border border-white/5 flex items-center gap-3">
+                                <div className={`w-2 h-2 rounded-full ${account.account_type === 'credit' ? 'bg-rose-400' : 'bg-emerald-400'}`}></div>
+                                <span className="text-sm font-semibold text-white/80">
+                                    {account.account_type === 'credit' ? `Kredi Kartı (${account.account_number.slice(-4)})` : (account.account_name || account.account_number)}
+                                </span>
+                                <span className="text-sm font-bold text-white">{formatMoney(balances[accountId])}</span>
                             </div>
                         );
                     })}
                 </div>
             </div>
 
-            <div style={{ display: "flex", gap: 10, marginBottom: 24, background: "var(--bg-input)", padding: 8, borderRadius: "var(--radius-full)", flexWrap: "wrap" }}>
+            {/* Main Tabs */}
+            <div className="flex flex-wrap gap-2 mb-8 bg-black/20 p-2 rounded-2xl border border-white/5 w-fit mx-auto md:mx-0">
                 {TAB_CONFIG.map((tab) => (
                     <button
                         key={tab.id}
-                        type="button"
-                        onClick={() => setActiveTab(tab.id)}
-                        style={{
-                            flex: 1,
-                            minWidth: 120,
-                            padding: "14px 10px",
-                            borderRadius: "var(--radius-full)",
-                            border: "none",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: 8,
-                            fontWeight: 800,
-                            background: activeTab === tab.id ? tab.color : "transparent",
-                            color: activeTab === tab.id ? "#fff" : "var(--text-muted)",
-                        }}
+                        onClick={() => { setActiveTab(tab.id); setTransferStep(1); }}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300
+                            ${activeTab === tab.id ? `${tab.bg} ${tab.color} shadow-lg border ${tab.border}` : "text-white/50 hover:text-white hover:bg-white/5 border border-transparent"}`}
                     >
                         <tab.icon size={18} /> {tab.label}
                     </button>
                 ))}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24 }}>
-                <div className="card">
-                    {activeTab === "deposit" ? (
-                        <MoneyForm
-                            title="Hesaba para yatir"
-                            submitLabel={loading ? "Isleniyor" : "Parayi yatir"}
-                            submitClass="btn btn-success"
-                            form={depositForm}
-                            setForm={setDepositForm}
-                            accounts={accounts}
-                            balances={balances}
-                            loading={loading}
-                            mode="deposit"
-                            onSubmit={handleDeposit}
-                        />
-                    ) : null}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Main Form Area */}
+                <div className="lg:col-span-8 space-y-6">
+                    {/* TRANSFER WIZARD */}
+                    {activeTab === "transfer" && (
+                        <div className="bg-deepblue-900/40 backdrop-blur-md rounded-3xl p-6 md:p-8 border border-white/10 shadow-xl overflow-hidden relative">
+                            <h3 className="text-2xl font-black text-white mb-8">Kolay Transfer</h3>
 
-                    {activeTab === "withdraw" ? (
-                        <MoneyForm
-                            title="Hesaptan para cek"
-                            submitLabel={loading ? "Isleniyor" : "Parayi cek"}
-                            submitClass="btn btn-danger"
-                            form={withdrawForm}
-                            setForm={setWithdrawForm}
-                            accounts={accounts}
-                            balances={balances}
-                            loading={loading}
-                            mode="withdraw"
-                            onSubmit={handleWithdraw}
-                        />
-                    ) : null}
+                            {/* Progress Bar */}
+                            <div className="flex items-center justify-between mb-8 relative">
+                                <div className="absolute top-1/2 left-0 w-full h-1 bg-white/5 -translate-y-1/2 rounded-full z-0"></div>
+                                <div
+                                    className="absolute top-1/2 left-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 -translate-y-1/2 rounded-full z-0 transition-all duration-500"
+                                    style={{ width: `${((transferStep - 1) / 3) * 100}%` }}
+                                ></div>
 
-                    {activeTab === "transfer" ? (
-                        <form onSubmit={handleTransfer}>
-                            <h3 style={sectionTitleStyle}>Kolay transfer</h3>
-                            <div className="form-group">
-                                <label className="form-label">Gonderen hesap</label>
-                                <select className="form-select" value={transferForm.from_account_id} onChange={(event) => setTransferForm((prev) => ({ ...prev, from_account_id: event.target.value }))} required>
-                                    <option value="">Hesap secin</option>
-                                    {accounts.map((account) => {
-                                        const accountId = account.id || account.account_id;
-                                        return (
-                                            <option key={accountId} value={accountId}>
-                                                {account.account_type === 'credit' ? `Kredi Kartı Hesabı (${account.account_number.slice(-4)})` : (account.account_name || account.account_number)} - {formatMoney(balances[accountId])}
-                                            </option>
-                                        );
-                                    })}
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Alici</label>
-                                <input
-                                    className="form-input"
-                                    placeholder="IBAN, hesap no, telefon, e-posta veya TC Kimlik"
-                                    value={transferForm.target}
-                                    onChange={(event) => setTransferForm((prev) => ({ ...prev, target: event.target.value }))}
-                                    required
-                                />
-                            </div>
-                            {easyAddresses.length > 0 ? (
-                                <div style={{ marginBottom: 18 }}>
-                                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>Kayitli kolay adresler</div>
-                                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                        {easyAddresses.map((easyAddress) => (
-                                            <button
-                                                key={easyAddress.id}
-                                                type="button"
-                                                onClick={() => setTransferForm((prev) => ({ ...prev, target: easyAddress.alias_value }))}
-                                                style={easyAddressChipStyle}
-                                            >
-                                                {easyAddress.label || easyAddress.alias_type} - {easyAddress.masked_value || easyAddress.alias_value}
-                                            </button>
-                                        ))}
+                                {[1, 2, 3, 4].map((step) => (
+                                    <div
+                                        key={step}
+                                        className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm relative z-10 transition-all duration-300
+                                            ${transferStep > step ? 'bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)] border-none' :
+                                                transferStep === step ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.5)] border-2 border-white/20 scale-110' :
+                                                    'bg-deepblue-900 border-2 border-white/10 text-white/30'}`}
+                                        onClick={() => step < transferStep && setTransferStep(step)}
+                                        style={{ cursor: step < transferStep ? 'pointer' : 'default' }}
+                                    >
+                                        {transferStep > step ? <CheckCircle size={18} /> : step}
                                     </div>
+                                ))}
+                            </div>
+
+                            <AnimatePresence mode="wait">
+                                {/* STEP 1: Account */}
+                                {transferStep === 1 && (
+                                    <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                        <div className="text-center mb-8">
+                                            <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 text-blue-400">
+                                                <Wallet size={32} />
+                                            </div>
+                                            <h4 className="text-lg font-bold text-white">Gönderen Hesabı Seçin</h4>
+                                            <p className="text-sm text-white/50">Transferin yapılacağı kaynağı belirleyin.</p>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            {accounts.map((account) => {
+                                                const accountId = account.id || account.account_id;
+                                                const isActive = transferForm.from_account_id === accountId;
+                                                return (
+                                                    <button
+                                                        key={accountId}
+                                                        onClick={() => setTransferForm({ ...transferForm, from_account_id: accountId })}
+                                                        className={`w-full text-left p-4 rounded-2xl border transition-all flex items-center justify-between
+                                                            ${isActive ? 'bg-blue-500/10 border-blue-500/50 shadow-inner' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                                                    >
+                                                        <div>
+                                                            <div className={`font-bold text-sm mb-1 ${isActive ? 'text-blue-300' : 'text-white'}`}>
+                                                                {account.account_type === 'credit' ? `Kredi Kartı (${account.account_number.slice(-4)})` : (account.account_name || account.account_number)}
+                                                            </div>
+                                                            <div className="text-xs text-white/50">{account.currency || "TRY"}</div>
+                                                        </div>
+                                                        <div className={`font-black tracking-tight text-lg ${isActive ? 'text-white' : 'text-white/70'}`}>
+                                                            {formatMoney(balances[accountId])}
+                                                        </div>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+
+                                        <button onClick={handleNextStep} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl mt-6 transition-colors shadow-lg shadow-blue-500/20 flex justify-center items-center gap-2">
+                                            Devam Et <ArrowRight size={18} />
+                                        </button>
+                                    </motion.div>
+                                )}
+
+                                {/* STEP 2: Target */}
+                                {transferStep === 2 && (
+                                    <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                        <div className="text-center mb-8">
+                                            <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 text-emerald-400">
+                                                <User size={32} />
+                                            </div>
+                                            <h4 className="text-lg font-bold text-white">Alıcı Bilgileri</h4>
+                                            <p className="text-sm text-white/50">Kime para göndermek istiyorsunuz?</p>
+                                        </div>
+
+                                        <div>
+                                            <input
+                                                className="w-full bg-black/30 border border-white/10 rounded-xl px-5 py-4 text-white font-mono text-center tracking-wider focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 placeholder:text-white/20 placeholder:font-sans"
+                                                placeholder="IBAN, Hesap No veya Kolay Adres"
+                                                value={transferForm.target}
+                                                onChange={(e) => setTransferForm({ ...transferForm, target: e.target.value })}
+                                                autoFocus
+                                            />
+                                        </div>
+
+                                        {easyAddresses.length > 0 && (
+                                            <div className="mt-8">
+                                                <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Veya Kolay Adres Seçin</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {easyAddresses.map((ea) => (
+                                                        <button
+                                                            key={ea.id}
+                                                            onClick={() => setTransferForm({ ...transferForm, target: ea.alias_value })}
+                                                            className={`px-4 py-2 border rounded-xl text-sm font-semibold transition-all
+                                                                ${transferForm.target === ea.alias_value ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-black/20 border-white/10 text-white/70 hover:bg-white/5'}`}
+                                                        >
+                                                            {ea.label || ea.alias_type} ({ea.masked_value || ea.alias_value})
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="flex gap-4 mt-8">
+                                            <button onClick={() => setTransferStep(1)} className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-xl transition-colors border border-white/10 flex justify-center items-center gap-2">
+                                                <ChevronLeft size={18} /> Geri
+                                            </button>
+                                            <button onClick={handleNextStep} className="flex-[2] bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl transition-colors shadow-lg shadow-blue-500/20 flex justify-center items-center gap-2">
+                                                Devam Et <ArrowRight size={18} />
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {/* STEP 3: Amount & Description */}
+                                {transferStep === 3 && (
+                                    <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                        <div className="text-center mb-8">
+                                            <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 text-indigo-400">
+                                                <CreditCard size={32} />
+                                            </div>
+                                            <h4 className="text-lg font-bold text-white">Tutar ve Açıklama</h4>
+                                            <p className="text-sm text-white/50">Gönderilecek tutarı belirleyin.</p>
+                                        </div>
+
+                                        <div className="space-y-5">
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                                                    <span className="text-white/40 text-2xl font-black">₺</span>
+                                                </div>
+                                                <input
+                                                    className="w-full bg-black/30 border border-white/10 rounded-xl pl-12 pr-5 py-4 text-white text-3xl font-black tracking-tighter focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 placeholder:text-white/10"
+                                                    type="number" min="0.01" step="0.01"
+                                                    value={transferForm.amount}
+                                                    onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })}
+                                                    placeholder="0.00"
+                                                    autoFocus
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-semibold text-white/50 mb-2 uppercase tracking-wider">Açıklama (Opsiyonel)</label>
+                                                <input
+                                                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50"
+                                                    value={transferForm.description}
+                                                    onChange={(e) => setTransferForm({ ...transferForm, description: e.target.value })}
+                                                    placeholder="Örnek: Kira, Aidat, Borç"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-4 mt-8">
+                                            <button onClick={() => setTransferStep(2)} className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-xl transition-colors border border-white/10 flex justify-center items-center gap-2">
+                                                <ChevronLeft size={18} /> Geri
+                                            </button>
+                                            <button onClick={handleNextStep} className="flex-[2] bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl transition-colors shadow-lg shadow-blue-500/20 flex justify-center items-center gap-2">
+                                                Devam Et <ArrowRight size={18} />
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {/* STEP 4: Confirmation */}
+                                {transferStep === 4 && (
+                                    <motion.div key="step4" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-6">
+                                        <div className="text-center mb-8">
+                                            <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 text-amber-400">
+                                                <CheckCircle size={32} />
+                                            </div>
+                                            <h4 className="text-lg font-bold text-white">İşlemi Onaylayın</h4>
+                                            <p className="text-sm text-white/50">Lütfen bilgileri kontrol edin.</p>
+                                        </div>
+
+                                        <div className="bg-black/20 rounded-2xl border border-white/5 p-6 space-y-4">
+                                            <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                                <span className="text-sm text-white/50">Gönderen</span>
+                                                <span className="text-sm font-bold text-white">
+                                                    {accounts.find(a => (a.id || a.account_id) === transferForm.from_account_id)?.account_number || "Seçilen Hesap"}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                                <span className="text-sm text-white/50">Alıcı</span>
+                                                <span className="text-sm font-bold text-white tracking-widest font-mono">{transferForm.target}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                                <span className="text-sm text-white/50">Tutar</span>
+                                                <span className="text-xl font-black text-rose-400">-{formatMoney(transferForm.amount)}</span>
+                                            </div>
+                                            {transferForm.description && (
+                                                <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                                    <span className="text-sm text-white/50">Açıklama</span>
+                                                    <span className="text-sm font-medium text-white">{transferForm.description}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex gap-4 mt-8">
+                                            <button onClick={() => setTransferStep(3)} className="px-6 bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-xl transition-colors border border-white/10">
+                                                Geri Dön
+                                            </button>
+                                            <button
+                                                onClick={handleTransfer}
+                                                disabled={loading}
+                                                className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-emerald-500/20 flex justify-center items-center gap-2 disabled:opacity-50"
+                                            >
+                                                {loading ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : <CheckCircle size={18} />}
+                                                İşlemi Onayla
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    )}
+
+                    {/* DEPOSIT FORM */}
+                    {activeTab === "deposit" && (
+                        <div className="bg-deepblue-900/40 backdrop-blur-md rounded-3xl p-6 md:p-8 border border-white/10 shadow-xl relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+
+                            <div className="flex items-center gap-4 mb-8 relative z-10">
+                                <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl">
+                                    <ArrowDownLeft size={24} />
                                 </div>
-                            ) : null}
-                            <div className="form-group">
-                                <label className="form-label">Tutar</label>
-                                <input className="form-input" type="number" min="0.01" step="0.01" value={transferForm.amount} onChange={(event) => setTransferForm((prev) => ({ ...prev, amount: event.target.value }))} required />
+                                <div>
+                                    <h3 className="text-2xl font-black text-white">Para Yatır</h3>
+                                    <p className="text-sm text-white/50">Hesabınıza nakit girişi sağlayın.</p>
+                                </div>
                             </div>
-                            <div className="form-group">
-                                <label className="form-label">Aciklama</label>
-                                <input className="form-input" value={transferForm.description} onChange={(event) => setTransferForm((prev) => ({ ...prev, description: event.target.value }))} placeholder="Ornek: kira, yemek, borc iadesi" />
+
+                            <form onSubmit={handleDeposit} className="space-y-5 relative z-10">
+                                <div>
+                                    <label className="block text-xs font-semibold text-white/50 mb-2 uppercase tracking-wider">Hesap Seçimi</label>
+                                    <select className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-4 text-white focus:outline-none focus:border-emerald-500/50 appearance-none" value={depositForm.account_id} onChange={(e) => setDepositForm({ ...depositForm, account_id: e.target.value })} required>
+                                        {accounts.map((account) => {
+                                            const accountId = account.id || account.account_id;
+                                            return (
+                                                <option key={accountId} value={accountId} className="bg-slate-800">
+                                                    {account.account_number} - {formatMoney(balances[accountId])}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-white/50 mb-2 uppercase tracking-wider">Tutar (₺)</label>
+                                    <input className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-4 text-white text-xl font-bold tracking-tight focus:outline-none focus:border-emerald-500/50" type="number" min="0.01" step="0.01" value={depositForm.amount} onChange={(e) => setDepositForm({ ...depositForm, amount: e.target.value })} required placeholder="0.00" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-white/50 mb-2 uppercase tracking-wider">Açıklama (Opsiyonel)</label>
+                                    <input className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-4 text-white focus:outline-none focus:border-emerald-500/50" value={depositForm.description} onChange={(e) => setDepositForm({ ...depositForm, description: e.target.value })} placeholder="Maaş, Harçlık vb." />
+                                </div>
+
+                                <button disabled={loading} className="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50">
+                                    {loading ? "İşleniyor..." : "Parayı Yatır"}
+                                </button>
+                            </form>
+                        </div>
+                    )}
+
+                    {/* WITHDRAW FORM */}
+                    {activeTab === "withdraw" && (
+                        <div className="bg-deepblue-900/40 backdrop-blur-md rounded-3xl p-6 md:p-8 border border-white/10 shadow-xl relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+
+                            <div className="flex items-center gap-4 mb-8 relative z-10">
+                                <div className="p-3 bg-rose-500/10 text-rose-400 rounded-xl">
+                                    <ArrowUpRight size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl font-black text-white">Para Çek</h3>
+                                    <p className="text-sm text-white/50">Hesabınızdan nakit çıkışı yapın.</p>
+                                </div>
                             </div>
-                            <button className="btn btn-primary" disabled={loading} style={{ width: "100%" }}>
-                                {loading ? "Isleniyor" : "Transfer et"}
-                            </button>
-                        </form>
-                    ) : null}
+
+                            <form onSubmit={handleWithdraw} className="space-y-5 relative z-10">
+                                <div>
+                                    <label className="block text-xs font-semibold text-white/50 mb-2 uppercase tracking-wider">Hesap Seçimi</label>
+                                    <select className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-4 text-white focus:outline-none focus:border-rose-500/50 appearance-none" value={withdrawForm.account_id} onChange={(e) => setWithdrawForm({ ...withdrawForm, account_id: e.target.value })} required>
+                                        {accounts.map((account) => {
+                                            const accountId = account.id || account.account_id;
+                                            return (
+                                                <option key={accountId} value={accountId} className="bg-slate-800">
+                                                    {account.account_number} - {formatMoney(balances[accountId])}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-white/50 mb-2 uppercase tracking-wider">Tutar (₺)</label>
+                                    <input className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-4 text-white text-xl font-bold tracking-tight focus:outline-none focus:border-rose-500/50" type="number" min="0.01" step="0.01" value={withdrawForm.amount} onChange={(e) => setWithdrawForm({ ...withdrawForm, amount: e.target.value })} required placeholder="0.00" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-white/50 mb-2 uppercase tracking-wider">Açıklama (Opsiyonel)</label>
+                                    <input className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-4 text-white focus:outline-none focus:border-rose-500/50" value={withdrawForm.description} onChange={(e) => setWithdrawForm({ ...withdrawForm, description: e.target.value })} placeholder="ATM, Nakit Çekim vb." />
+                                </div>
+
+                                <button disabled={loading} className="w-full mt-4 bg-rose-600 hover:bg-rose-500 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg shadow-rose-500/20 disabled:opacity-50">
+                                    {loading ? "İşleniyor..." : "Parayı Çek"}
+                                </button>
+                            </form>
+                        </div>
+                    )}
                 </div>
 
-                <div style={{ display: "grid", gap: 16 }}>
-                    <div className="card">
-                        <h3 style={sectionTitleStyle}>Kolay adres defteri</h3>
+                {/* Right Column: Address Book & Quick Stats */}
+                <div className="lg:col-span-4 space-y-6">
+                    {/* Easy Address Book */}
+                    <div className="bg-deepblue-900/40 backdrop-blur-md rounded-3xl p-6 border border-white/10 shadow-xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold text-white">Adres Defteri</h3>
+                            <button
+                                onClick={() => window.location.href = `${rolePath}/easy-address`}
+                                className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-colors"
+                            >
+                                <Plus size={16} />
+                            </button>
+                        </div>
+
                         {easyAddresses.length === 0 ? (
-                            <EmptyState message="Henuz kolay adres kayitli degil. Telefon, e-posta veya TC ile kayit ekleyebilirsiniz." />
+                            <div className="text-center py-8 bg-black/20 rounded-2xl border border-white/5">
+                                <Landmark size={24} className="mx-auto text-white/30 mb-2" />
+                                <p className="text-sm text-white/50 px-4">Kayıtlı kolay adresiniz bulunmuyor.</p>
+                            </div>
                         ) : (
-                            <div style={{ display: "grid", gap: 10 }}>
-                                {easyAddresses.map((easyAddress) => (
-                                    <div key={easyAddress.id} style={aliasCardStyle}>
+                            <div className="space-y-3">
+                                {easyAddresses.map((ea) => (
+                                    <div key={ea.id} className="p-4 bg-white/5 rounded-2xl border border-white/5 flex justify-between items-center group hover:bg-white/10 transition-colors">
                                         <div>
-                                            <div style={{ fontWeight: 700 }}>{easyAddress.label || easyAddress.alias_type}</div>
-                                            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
-                                                {easyAddress.alias_type} - {easyAddress.masked_value || easyAddress.alias_value}
-                                            </div>
-                                            {easyAddress.account ? (
-                                                <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
-                                                    {easyAddress.account.account_number} - {easyAddress.account.currency}
-                                                </div>
-                                            ) : null}
+                                            <div className="font-bold text-sm text-white">{ea.label || ea.alias_type}</div>
+                                            <div className="text-xs text-white/50 mt-0.5">{ea.masked_value || ea.alias_value}</div>
                                         </div>
-                                        <button type="button" onClick={() => handleDeleteAlias(easyAddress.id)} style={deleteButtonStyle}>
-                                            <Trash2 size={14} />
+                                        <button
+                                            onClick={() => handleDeleteAlias(ea.id)}
+                                            className="p-2 text-rose-400/50 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                        >
+                                            <Trash2 size={16} />
                                         </button>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </div>
-
-                    <div className="card">
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                            <h3 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Yeni kolay adres</h3>
-                        </div>
-                        <p style={{ color: "var(--text-secondary)", marginBottom: 20, fontSize: 14 }}>
-                            IBAN ezberlemeye son! Para transferlerini kolaylaştırmak için telefon, e-posta veya TC Kimlik numaranızı bir hesabınıza bağlayın.
-                        </p>
-                        <button
-                            className="btn btn-outline"
-                            type="button"
-                            onClick={() => window.location.href = `${rolePath}/easy-address`}
-                            style={{ width: "100%", display: "flex", justifyContent: "center", gap: 8, padding: "12px 0" }}
-                        >
-                            <Plus size={18} /> Kolay Adres Yönetimi
-                        </button>
-                    </div>
-
-                    <div className="card">
-                        <h3 style={sectionTitleStyle}>Hesap ozetiniz</h3>
-                        {accounts.length === 0 ? <EmptyState message="Henuz aktif hesabiniz yok." /> : accounts.map((account) => {
-                            const accountId = account.id || account.account_id;
-                            return (
-                                <div key={accountId} style={summaryRowStyle}>
-                                    <div>
-                                        <div style={{ fontWeight: 700 }}>{account.account_number}</div>
-                                        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{account.iban}</div>
-                                    </div>
-                                    <div style={{ fontWeight: 800 }}>{formatMoney(balances[accountId])}</div>
-                                </div>
-                            );
-                        })}
-                    </div>
                 </div>
             </div>
         </div>
     );
 }
 
-function MoneyForm({ title, submitLabel, submitClass, form, setForm, accounts, balances, loading, mode, onSubmit }) {
-    return (
-        <form onSubmit={onSubmit}>
-            <h3 style={sectionTitleStyle}>{title}</h3>
-            <div className="form-group">
-                <label className="form-label">Hesap</label>
-                <select className="form-select" value={form.account_id} onChange={(event) => setForm((prev) => ({ ...prev, account_id: event.target.value }))} required>
-                    <option value="">Hesap secin</option>
-                    {accounts.map((account) => {
-                        const accountId = account.id || account.account_id;
-                        return (
-                            <option key={accountId} value={accountId}>
-                                {account.account_number} - {formatMoney(balances[accountId])}
-                            </option>
-                        );
-                    })}
-                </select>
-            </div>
-            <div className="form-group">
-                <label className="form-label">Tutar</label>
-                <input className="form-input" type="number" min="0.01" step="0.01" value={form.amount} onChange={(event) => setForm((prev) => ({ ...prev, amount: event.target.value }))} required />
-            </div>
-            <div className="form-group">
-                <label className="form-label">Aciklama</label>
-                <input className="form-input" value={form.description} onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))} placeholder={mode === "deposit" ? "Ornek: maas, havale" : "Ornek: ATM, nakit cekim"} />
-            </div>
-            <button className={submitClass} disabled={loading} style={{ width: "100%" }}>{submitLabel}</button>
-        </form>
-    );
-}
-
-function EmptyState({ message }) {
-    return (
-        <div style={{ padding: 18, borderRadius: 14, background: "var(--bg-secondary)", color: "var(--text-secondary)", textAlign: "center" }}>
-            <Landmark size={28} style={{ marginBottom: 10, opacity: 0.7 }} />
-            <div style={{ fontSize: 13 }}>{message}</div>
-        </div>
-    );
-}
-
 function ReceiptRow({ label, value, copyable = false }) {
     return (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: "1px solid var(--border-color)" }}>
-            <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{label}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+        <div className="flex justify-between items-center py-1">
+            <span className="text-sm text-white/50">{label}</span>
+            <span className="text-sm font-bold text-white flex items-center gap-2">
                 {value}
-                {copyable ? (
-                    <button type="button" onClick={() => { navigator.clipboard.writeText(value); toast.success("Kopyalandi."); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)" }}>
+                {copyable && (
+                    <button onClick={() => { navigator.clipboard.writeText(value); toast.success("Kopyalandı."); }} className="text-blue-400 hover:text-blue-300">
                         <Copy size={14} />
                     </button>
-                ) : null}
+                )}
             </span>
         </div>
     );
@@ -489,55 +689,3 @@ function ReceiptRow({ label, value, copyable = false }) {
 function formatMoney(value) {
     return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(Number(value || 0));
 }
-
-const sectionTitleStyle = {
-    fontSize: 22,
-    fontWeight: 800,
-    marginBottom: 20,
-};
-
-const easyAddressChipStyle = {
-    padding: "8px 12px",
-    borderRadius: 999,
-    border: "1px solid var(--border-color)",
-    background: "var(--bg-secondary)",
-    color: "var(--text-primary)",
-    cursor: "pointer",
-    fontWeight: 600,
-    fontSize: 12,
-};
-
-const aliasCardStyle = {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderRadius: 14,
-    background: "var(--bg-secondary)",
-    border: "1px solid var(--border-color)",
-};
-
-const deleteButtonStyle = {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    border: "1px solid var(--border-color)",
-    background: "var(--bg-card)",
-    color: "#ef4444",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-};
-
-const summaryRowStyle = {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    padding: "12px 0",
-    borderBottom: "1px solid var(--border-color)",
-};
-
-
