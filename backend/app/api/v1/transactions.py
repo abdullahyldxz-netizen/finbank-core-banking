@@ -68,7 +68,6 @@ async def deposit(
     risk_score = _generate_mock_ai_risk_score(body.amount or 0, total_balance)
     
     now = datetime.now(timezone.utc)
-    import str, uuid
     import uuid
     approval_doc = {
         "user_id": current_user["user_id"],

@@ -6,7 +6,7 @@ import uuid
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.credit_card import CreditCardResponse, CreditCardCreate, CreditCardPaymentRequest, CreditCardTransaction
+from app.models.credit_card import CreditCardResponse, CreditCardCreate, VirtualCardCreate, CreditCardPaymentRequest, CreditCardTransaction
 
 router = APIRouter()
 
@@ -96,6 +96,59 @@ async def apply_for_credit_card(
     card_doc.pop("_id", None)
     card_doc["account_id"] = account_doc["account_id"]
     card_doc["iban"] = account_doc["iban"]
+    return card_doc
+
+@router.post("/virtual", response_model=CreditCardResponse)
+async def create_virtual_card(
+    request: VirtualCardCreate,
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_db)
+):
+    user_id = current_user.get("user_id")
+    customer = await db.customers.find_one({"user_id": user_id})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer profile not found")
+    
+    # Needs a physical card to attach the virtual one
+    physical_card = await db.credit_cards.find_one({
+        "customer_id": customer["customer_id"],
+        "is_virtual": {"$ne": True},
+        "status": {"$in": ["active", "frozen"]}
+    })
+    
+    if not physical_card:
+        raise HTTPException(status_code=400, detail="You must have an active physical credit card first")
+
+    # Get the parent account ID attached to the physical card
+    account = await db.accounts.find_one({"card_id": physical_card["id"]})
+    if not account:
+        raise HTTPException(status_code=404, detail="Physical card account not found")
+
+    expiry = datetime.now(timezone.utc) + timedelta(days=365) # 1 year expiry
+
+    card_doc = {
+        "id": str(uuid.uuid4()),
+        "customer_id": customer["customer_id"],
+        "card_number": generate_cc_number(),
+        "expiry_date": expiry.strftime("%m/%y"),
+        "cvv": generate_cvv(),
+        "limit": physical_card["limit"], # Shares the main limit conceptually
+        "current_debt": 0.0,
+        "available_limit": physical_card["available_limit"],
+        "interest_rate": physical_card["interest_rate"],
+        "status": "active",
+        "is_virtual": True,
+        "alias": request.alias or "Sanal Kart",
+        "online_limit": float(request.online_limit) if request.online_limit else physical_card["limit"],
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc)
+    }
+
+    await db.credit_cards.insert_one(card_doc.copy())
+
+    card_doc.pop("_id", None)
+    card_doc["account_id"] = account["account_id"]
+    card_doc["iban"] = account["iban"]
     return card_doc
 
 @router.get("/", response_model=List[CreditCardResponse])

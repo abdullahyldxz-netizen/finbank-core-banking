@@ -20,8 +20,15 @@ class CreditCardResponse(BaseModel):
     status: str # active, blocked, frozen
     iban: Optional[str] = None
     account_id: Optional[str] = None
+    is_virtual: Optional[bool] = False
+    alias: Optional[str] = None
+    online_limit: Optional[float] = None
     created_at: datetime
     updated_at: datetime
+
+class VirtualCardCreate(BaseModel):
+    alias: Optional[str] = None
+    online_limit: Optional[float] = None
 
 class CreditCardPaymentRequest(BaseModel):
     amount: float = Field(..., gt=0, description="Amount to pay towards the credit card debt")
