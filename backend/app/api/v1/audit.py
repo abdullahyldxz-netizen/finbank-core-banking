@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from app.core.database import get_database
-from app.core.security import require_admin
+from app.core.security import require_management
 from app.models.audit import AuditLogResponse, AuditListResponse
 
 router = APIRouter(prefix="/audit", tags=["Audit Logs"])
@@ -20,7 +20,7 @@ async def get_audit_logs(
     to_date: Optional[datetime] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_management),
     db=Depends(get_database),
 ):
     """Admin: Query audit logs with filtering and pagination."""

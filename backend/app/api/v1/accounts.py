@@ -6,7 +6,7 @@ import random
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from app.core.database import get_database
-from app.core.security import get_current_user, require_admin, require_staff
+from app.core.security import get_current_user, require_admin, require_staff, require_management
 from app.models.account import (
     AccountCreateRequest, AccountResponse, AccountBalanceResponse,
 )
@@ -211,7 +211,7 @@ async def get_account_balance(
 
 @router.get("/all", response_model=list[AccountResponse])
 async def list_all_accounts(
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_management),
     db=Depends(get_database),
 ):
     """Admin: List all accounts in the system."""

@@ -28,15 +28,15 @@ async def get_ledger_entries(
     Query ledger entries. Customers can only see their own accounts.
     Admins can see all entries.
     """
-    # If not admin, restrict to own accounts
-    if current_user["role"] != "admin" and account_id:
+    # If not management/staff, restrict to own accounts
+    if current_user["role"] == "customer" and account_id:
         account = await db.accounts.find_one({"account_id": account_id})
         if not account or account["user_id"] != current_user["user_id"]:
             return LedgerListResponse(entries=[], total=0, skip=skip, limit=limit)
 
     # If customer doesn't specify account, get all their accounts
     effective_account_id = account_id
-    if current_user["role"] != "admin" and not account_id:
+    if current_user["role"] == "customer" and not account_id:
         accounts = await db.accounts.find(
             {"user_id": current_user["user_id"]}
         ).to_list(50)

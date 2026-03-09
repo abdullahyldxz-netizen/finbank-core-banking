@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from app.core.database import get_database
-from app.core.security import get_current_user, require_admin, require_staff
+from app.core.security import get_current_user, require_admin, require_staff, require_any_internal
 from app.models.customer import (
     CustomerCreateRequest, CustomerUpdateRequest,
     CustomerStatusUpdate, CustomerResponse,
@@ -168,7 +168,7 @@ async def update_my_customer(
 
 @router.get("/", response_model=list[CustomerResponse])
 async def list_all_customers(
-    current_user: dict = Depends(require_staff),
+    current_user: dict = Depends(require_any_internal),
     db=Depends(get_database),
 ):
     """Staff: List all customers."""
@@ -198,7 +198,7 @@ async def update_customer_status(
     customer_id: str,
     body: CustomerStatusUpdate,
     request: Request,
-    current_user: dict = Depends(require_staff),
+    current_user: dict = Depends(require_any_internal),
     db=Depends(get_database),
 ):
     """Staff: Update customer status & KYC verification."""
