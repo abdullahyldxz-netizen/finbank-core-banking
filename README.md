@@ -73,6 +73,8 @@ cd infra && docker compose up --build
 
 ### Phase 2 Features (Advanced Banking)
 - **Virtual & Physical Cards**: Card generation, cvv/expiry masking, online/contactless limits, debt payment, freezing.
+- **Credit Card Cash Advance (Nakit Avans)**: Transferring funds directly from a credit card account to any IBAN or Kolay Adres.
+- **Interactive 3D UI**: Fully animated 3D flip card designs for credit/debit cards on the frontend.
 - **Easy Address (FAST)**: Sending money via Phone, Email, or National ID instead of IBAN.
 - **Payment Requests & Split Bill (Alman Usulü)**: Requesting money from others and splitting expenses equally.
 - **Auto Bill Payments**: Setting up recurring, limit-based automated utility bill payments.
