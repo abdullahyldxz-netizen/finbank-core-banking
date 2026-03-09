@@ -34,6 +34,7 @@ export default function CardsPage() {
     const [purchaseDescription, setPurchaseDescription] = useState("");
     const [virtualCardForm, setVirtualCardForm] = useState({ alias: "", online_limit: "" });
     const [showSensitive, setShowSensitive] = useState(false);
+    const [isFlipped, setIsFlipped] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -280,10 +281,6 @@ export default function CardsPage() {
                         Fiziksel kartinizi ve sanal kartlarinizi secip limiti, borcu ve hareketleri yonetin.
                     </p>
                 </div>
-                <button type="button" onClick={() => setShowSensitive((prev) => !prev)} style={secondaryActionStyle}>
-                    {showSensitive ? <EyeOff size={16} /> : <Eye size={16} />}
-                    {showSensitive ? "Kart bilgilerini gizle" : "Kart bilgilerini goster"}
-                </button>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24 }}>
@@ -337,51 +334,91 @@ export default function CardsPage() {
                 {selectedCard ? (
                     <>
                         <div style={{ display: "grid", gap: 16 }}>
-                            <div style={cardVisualStyle}>
-                                <div style={{ position: "absolute", top: -26, right: -16, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.14)" }} />
-                                <div style={{ position: "absolute", bottom: -36, left: -16, width: 120, height: 120, borderRadius: "50%", background: selectedCard.is_virtual ? "rgba(34,197,94,0.18)" : "rgba(239,68,68,0.16)", transition: "all 0.3s" }} />
-                                <div style={{ position: "relative", zIndex: 1, transition: "all 0.3s" }}>
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 36 }}>
-                                        <div>
-                                            <div style={{ fontWeight: 800, fontSize: 22 }}>FinBank</div>
-                                            <div style={{ fontSize: 12, opacity: 0.74, marginTop: 4 }}>{selectedCard.card_name || "Kart"}</div>
-                                        </div>
-                                        <span style={typeChipStyle(selectedCard.is_virtual)}>{selectedCard.is_virtual ? "Sanal Kart" : "Fiziksel Kart"}</span>
-                                    </div>
-                                    <div style={{ marginBottom: 24 }}>
-                                        <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1.5 }}>Kart numarasi</div>
-                                        <div style={{ fontFamily: "monospace", fontSize: 24, fontWeight: 700, letterSpacing: 3, marginTop: 10 }}>
-                                            {showSensitive ? formatCardNumber(selectedCard.card_number) : maskCardNumber(selectedCard.card_number)}
-                                        </div>
-                                    </div>
-                                    <div style={{ display: "flex", justifyContent: "space-between", gap: 16, marginBottom: 22 }}>
-                                        <div>
-                                            <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1.5 }}>Kart sahibi</div>
-                                            <div style={{ fontWeight: 700, marginTop: 6 }}>{selectedCard.cardholder_name || "Musteri"}</div>
-                                        </div>
-                                        <div style={{ display: "flex", gap: 32, textAlign: "right" }}>
+                            {/* 3D Flip Card Container */}
+                            <div className={`flip-card ${isFlipped ? "flipped" : ""}`}>
+                                <div className="flip-card-inner">
+                                    {/* Front Face */}
+                                    <div className="flip-card-front" style={{ ...cardVisualStyle, background: selectedCard.is_virtual ? "linear-gradient(135deg, #064e3b 0%, #10b981 100%)" : "linear-gradient(135deg, #111827 0%, #2563eb 55%, #0f172a 100%)" }}>
+                                        <div style={{ position: "absolute", top: -26, right: -16, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.14)" }} />
+                                        <div style={{ position: "absolute", bottom: -36, left: -16, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
+
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 36, position: "relative", zIndex: 1 }}>
                                             <div>
-                                                <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1.5 }}>Son kullanma</div>
-                                                <div style={{ fontFamily: "monospace", fontWeight: 700, marginTop: 6 }}>{selectedCard.expiry_date}</div>
+                                                <div style={{ fontWeight: 800, fontSize: 24, letterSpacing: -0.5 }}>FinBank</div>
+                                                <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>{selectedCard.card_name || "Kart"}</div>
                                             </div>
-                                            <div>
-                                                <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1.5 }}>CVV</div>
-                                                <div style={{ fontFamily: "monospace", fontWeight: 700, marginTop: 6 }}>{showSensitive ? selectedCard.cvv : "***"}</div>
+                                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                                <span style={typeChipStyle(selectedCard.is_virtual)}>{selectedCard.is_virtual ? "Sanal Kart" : "Fiziksel Kart"}</span>
                                             </div>
                                         </div>
+
+                                        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                                            <div style={{ width: 44, height: 32, background: "linear-gradient(135deg, #ffd700, #ffb300)", borderRadius: 6, opacity: 0.9, position: "relative", overflow: "hidden" }}>
+                                                <div style={{ position: "absolute", top: "50%", left: 0, width: "100%", height: 1, background: "rgba(0,0,0,0.2)" }} />
+                                                <div style={{ position: "absolute", left: "50%", top: 0, width: 1, height: "100%", background: "rgba(0,0,0,0.2)" }} />
+                                            </div>
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" /><path d="M16 8h.01" /><path d="M16 16h.01" /><path d="M8 8h.01" /><path d="M8 16h.01" /><path d="M12 12h.01" /></svg>
+                                        </div>
+
+                                        <div style={{ marginBottom: 28 }}>
+                                            <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1.5 }}>Kart numarasi</div>
+                                            <div style={{ fontFamily: "monospace", fontSize: 24, fontWeight: 700, letterSpacing: 3, marginTop: 8 }}>
+                                                {showSensitive ? formatCardNumber(selectedCard.card_number) : maskCardNumber(selectedCard.card_number)}
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-end", position: "relative", zIndex: 1 }}>
+                                            <div>
+                                                <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1.5 }}>Kart sahibi</div>
+                                                <div style={{ fontWeight: 700, marginTop: 6, fontSize: 15 }}>{selectedCard.cardholder_name || "Musteri"}</div>
+                                            </div>
+                                            <div style={{ textAlign: "right", paddingRight: 8 }}>
+                                                <button type="button" onClick={() => setIsFlipped(true)} style={{ ...miniButtonStyle, padding: "8px 16px" }}>
+                                                    Arkasına Çevir
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                                        <button type="button" onClick={() => { navigator.clipboard.writeText(selectedCard.card_number); toast.success("Kart numarasi kopyalandi."); }} style={miniButtonStyle}>
-                                            <Copy size={14} /> Kart no kopyala
-                                        </button>
-                                        <button type="button" onClick={handleToggleFreeze} disabled={actionLoading} style={{ ...statusButtonStyle(selectedCard.status), cursor: actionLoading ? "not-allowed" : "pointer", opacity: actionLoading ? 0.7 : 1 }}>
-                                            {selectedCard.status === "active" ? "Aktif" : "Donduruldu"}
-                                        </button>
-                                        {selectedCard.is_virtual && (
-                                            <button type="button" onClick={handleDeleteVirtualCard} disabled={actionLoading} style={{ ...miniButtonStyle, border: "1px solid rgba(239, 68, 68, 0.4)", color: "#fca5a5" }}>
-                                                Sil
-                                            </button>
-                                        )}
+
+                                    {/* Back Face */}
+                                    <div className="flip-card-back">
+                                        <div className="magnetic-stripe" />
+                                        <div className="signature-strip">
+                                            <span style={{ fontFamily: "monospace", fontWeight: 800, color: "#1e293b", fontSize: 16, fontStyle: "italic" }}>
+                                                {showSensitive ? selectedCard.cvv : "***"}
+                                            </span>
+                                        </div>
+
+                                        <div style={{ padding: "16px 24px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                                            <div>
+                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                                                    <div style={{ fontSize: 12, opacity: 0.7 }}>Son kullanma: <strong style={{ fontFamily: "monospace", fontSize: 14 }}>{selectedCard.expiry_date}</strong></div>
+                                                    <button type="button" onClick={() => setShowSensitive((prev) => !prev)} style={{ ...miniButtonStyle, padding: "6px 12px", background: showSensitive ? "rgba(99, 102, 241, 0.2)" : "rgba(255,255,255,0.08)" }}>
+                                                        {showSensitive ? <EyeOff size={14} /> : <Eye size={14} />} {showSensitive ? "Gizle" : "Göster"}
+                                                    </button>
+                                                </div>
+
+                                                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                                    <button type="button" onClick={() => { navigator.clipboard.writeText(selectedCard.card_number); toast.success("Kart numarasi kopyalandi."); }} style={miniButtonStyle}>
+                                                        <Copy size={14} /> Kart no kopyala
+                                                    </button>
+                                                    <button type="button" onClick={handleToggleFreeze} disabled={actionLoading} style={{ ...statusButtonStyle(selectedCard.status), cursor: actionLoading ? "not-allowed" : "pointer", opacity: actionLoading ? 0.7 : 1 }}>
+                                                        {selectedCard.status === "active" ? "Aktif (Dondur)" : "Donduruldu (Aç)"}
+                                                    </button>
+                                                    {selectedCard.is_virtual && (
+                                                        <button type="button" onClick={handleDeleteVirtualCard} disabled={actionLoading} style={{ ...miniButtonStyle, border: "1px solid rgba(239, 68, 68, 0.4)", color: "#fca5a5" }}>
+                                                            Sil
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div style={{ textAlign: "right" }}>
+                                                <button type="button" onClick={() => setIsFlipped(false)} style={{ ...miniButtonStyle, padding: "8px 16px" }}>
+                                                    Ön Yüze Çevir
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -707,13 +744,8 @@ const miniButtonStyle = {
 };
 
 const cardVisualStyle = {
-    borderRadius: 24,
-    padding: 28,
     color: "#f8fafc",
-    position: "relative",
-    overflow: "hidden",
-    background: "linear-gradient(135deg, #111827 0%, #2563eb 55%, #0f172a 100%)",
-    boxShadow: "0 26px 60px rgba(15, 23, 42, 0.3)",
+    padding: 28,
 };
 
 
