@@ -3,7 +3,7 @@ FinBank - Transaction API Routes (Deposits, Withdrawals, Transfers)
 """
 from datetime import datetime, timezone
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, Query, Header
 from app.core.database import get_database
 from app.core.security import get_current_user
 from app.core.exceptions import (
@@ -46,10 +46,15 @@ async def _validate_account_ownership(
 async def deposit(
     body: DepositRequest,
     request: Request,
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
     current_user: dict = Depends(get_current_user),
     db=Depends(get_database),
 ):
     """Deposit money into an account (simulated funding)."""
+    if idempotency_key:
+        cached_result = await db.idempotency_keys.find_one({"key": idempotency_key})
+        if cached_result:
+            return cached_result["response_data"]
     account = await _validate_account_ownership(
         db, body.account_id, current_user["user_id"], current_user["role"], allow_employee_override=True
     )
@@ -80,7 +85,7 @@ async def deposit(
         "transaction_ref": entry["transaction_ref"],
     })
 
-    return TransactionResponse(
+    response = TransactionResponse(
         transaction_ref=entry["transaction_ref"],
         type="DEPOSIT",
         amount=body.amount,
@@ -90,15 +95,29 @@ async def deposit(
         created_at=entry["created_at"],
     )
 
+    if idempotency_key:
+        await db.idempotency_keys.insert_one({
+            "key": idempotency_key,
+            "response_data": response.model_dump(),
+            "created_at": datetime.now(timezone.utc)
+        })
+
+    return response
+
 
 @router.post("/withdraw", response_model=TransactionResponse)
 async def withdraw(
     body: WithdrawRequest,
     request: Request,
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
     current_user: dict = Depends(get_current_user),
     db=Depends(get_database),
 ):
     """Withdraw money from an account."""
+    if idempotency_key:
+        cached_result = await db.idempotency_keys.find_one({"key": idempotency_key})
+        if cached_result:
+            return cached_result["response_data"]
     account = await _validate_account_ownership(
         db, body.account_id, current_user["user_id"], current_user["role"]
     )
@@ -143,7 +162,7 @@ async def withdraw(
         "transaction_ref": entry["transaction_ref"],
     })
 
-    return TransactionResponse(
+    response = TransactionResponse(
         transaction_ref=entry["transaction_ref"],
         type="WITHDRAWAL",
         amount=body.amount,
@@ -153,15 +172,29 @@ async def withdraw(
         created_at=entry["created_at"],
     )
 
+    if idempotency_key:
+        await db.idempotency_keys.insert_one({
+            "key": idempotency_key,
+            "response_data": response.model_dump(),
+            "created_at": datetime.now(timezone.utc)
+        })
+
+    return response
+
 
 @router.post("/transfer", response_model=TransactionResponse)
 async def transfer(
     body: TransferRequest,
     request: Request,
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
     current_user: dict = Depends(get_current_user),
     db=Depends(get_database),
 ):
     """Transfer money between accounts (internal transfer)."""
+    if idempotency_key:
+        cached_result = await db.idempotency_keys.find_one({"key": idempotency_key})
+        if cached_result:
+            return cached_result["response_data"]
     if not body.to_account_id and not body.target_iban and not body.target_alias:
         raise HTTPException(status_code=400, detail="Either 'to_account_id', 'target_iban', or 'target_alias' is required.")
 
@@ -240,7 +273,7 @@ async def transfer(
         currency=from_account.get("currency", "TRY"),
     )
 
-    return TransactionResponse(
+    response = TransactionResponse(
         transaction_ref=txn_ref,
         type="TRANSFER",
         amount=body.amount,
@@ -250,6 +283,15 @@ async def transfer(
         description=body.description,
         created_at=datetime.now(timezone.utc),
     )
+
+    if idempotency_key:
+        await db.idempotency_keys.insert_one({
+            "key": idempotency_key,
+            "response_data": response.model_dump(),
+            "created_at": datetime.now(timezone.utc)
+        })
+
+    return response
 
 
 @router.get("/history")

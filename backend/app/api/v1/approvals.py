@@ -21,17 +21,18 @@ def _serialize_approval(doc: dict) -> ApprovalResponse:
     return ApprovalResponse(**doc)
 
 
-def _generate_mock_ai_risk_score(amount: float) -> str:
-    """Simulate an AI risk engine."""
+def _generate_mock_ai_risk_score(amount: float, total_balance: float) -> str:
+    """Simulate an AI risk engine using actual account balances."""
     if not amount:
         return "LOW"
     
-    if amount > 500000:
+    # If they are asking for more than 5x their total current balance, highly risky
+    if amount > (total_balance * 5) or amount > 500000:
         return "HIGH"
-    elif amount > 50000:
-        return random.choice(["MEDIUM", "HIGH"])
-    elif amount > 10000:
+    # If they are asking for more than 2x their total balance, moderately risky
+    elif amount > (total_balance * 2) or amount > 50000:
         return "MEDIUM"
+    
     return "LOW"
 
 
@@ -60,7 +61,14 @@ async def create_approval(
             detail=f"You already have a pending {body.request_type} request."
         )
 
-    risk_score = _generate_mock_ai_risk_score(body.amount or 0)
+    # Fetch actual account balances to feed the deterministic risk engine
+    accounts = await db.accounts.find({
+        "user_id": current_user["user_id"],
+        "status": "active"
+    }).to_list(100)
+    total_balance = sum(acc.get("balance", 0) for acc in accounts)
+
+    risk_score = _generate_mock_ai_risk_score(body.amount or 0, total_balance)
     
     now = datetime.now(timezone.utc)
     approval_doc = {

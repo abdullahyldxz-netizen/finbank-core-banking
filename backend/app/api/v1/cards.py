@@ -37,11 +37,23 @@ async def apply_for_credit_card(
     if existing_card:
         raise HTTPException(status_code=400, detail="You already have an active credit card")
 
-    # Mock Risk Assessment: Assign limit between 5,000 and 100,000 TRY
-    # In a real app, we'd check their balance, credit score, etc.
-    assigned_limit = random.choice([5000, 10000, 20000, 50000, 100000])
+    # Deterministic Risk Assessment: Assign limit based on their actual account balances
+    # We sum all active accounts and give a multiplier.
+    accounts = await db.accounts.find({
+        "customer_id": customer["customer_id"],
+        "status": "active"
+    }).to_list(100)
+
+    total_balance = sum(acc.get("balance", 0) for acc in accounts)
+    
+    # Base limit: 5000, Max limit: 100000, Multiplier: 2x total balance
+    assigned_limit = max(5000, min(total_balance * 2.0, 100000))
 
     expiry = datetime.now(timezone.utc) + timedelta(days=365*4)
+
+    # Fetch dynamic interest rate
+    config = await db.system_configs.find_one({"key": "CREDIT_CARD_INTEREST_RATE"})
+    interest_rate = config.get("value", 3.5) if config else 3.5
 
     card_doc = {
         "id": str(uuid.uuid4()),
@@ -52,7 +64,7 @@ async def apply_for_credit_card(
         "limit": float(assigned_limit),
         "current_debt": 0.0,
         "available_limit": float(assigned_limit),
-        "interest_rate": 3.5, # 3.5% monthly interest rate mock
+        "interest_rate": float(interest_rate),
         "status": "active",
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc)
