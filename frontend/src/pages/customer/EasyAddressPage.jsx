@@ -12,9 +12,9 @@ import {
 import { accountApi } from "../../services/api";
 
 const ALIAS_TYPES = {
-    PHONE: { label: "Cep Telefonu", icon: Smartphone },
-    EMAIL: { label: "E-Posta", icon: Mail },
-    TCKN: { label: "TC Kimlik No", icon: CreditCard },
+    phone: { label: "Cep Telefonu", icon: Smartphone },
+    email: { label: "E-Posta", icon: Mail },
+    tc_kimlik: { label: "TC Kimlik No", icon: CreditCard },
 };
 
 export default function EasyAddressPage() {
@@ -25,7 +25,7 @@ export default function EasyAddressPage() {
 
     const [formData, setFormData] = useState({
         account_id: "",
-        alias_type: "PHONE",
+        alias_type: "phone",
         alias_value: "",
         label: ""
     });
@@ -79,7 +79,13 @@ export default function EasyAddressPage() {
             setFormData(prev => ({ ...prev, alias_value: "", label: "" }));
             await loadData();
         } catch (error) {
-            toast.error(error.response?.data?.detail || "Kolay adres oluşturulamadı.");
+            let errorMsg = "Kolay adres oluşturulamadı.";
+            if (error.response?.data?.detail) {
+                errorMsg = typeof error.response.data.detail === "string"
+                    ? error.response.data.detail
+                    : JSON.stringify(error.response.data.detail);
+            }
+            toast.error(errorMsg);
         } finally {
             setActionLoading(false);
         }
@@ -102,7 +108,7 @@ export default function EasyAddressPage() {
 
     const formatAliasValue = (type, value) => {
         if (!value) return "";
-        if (type === "PHONE" && value.length === 10) {
+        if (type === "phone" && value.length === 10) {
             return `0 (${value.slice(0, 3)}) ${value.slice(3, 6)} ${value.slice(6)}`;
         }
         return value;
@@ -169,8 +175,8 @@ export default function EasyAddressPage() {
                                 value={formData.alias_value}
                                 onChange={(e) => setFormData(prev => ({ ...prev, alias_value: e.target.value }))}
                                 placeholder={
-                                    formData.alias_type === "PHONE" ? "5XX1234567" :
-                                        formData.alias_type === "TCKN" ? "11 Haneli TC Kimlik No" :
+                                    formData.alias_type === "phone" ? "5XX1234567" :
+                                        formData.alias_type === "tc_kimlik" ? "11 Haneli TC Kimlik No" :
                                             "ornek@email.com"
                                 }
                                 required

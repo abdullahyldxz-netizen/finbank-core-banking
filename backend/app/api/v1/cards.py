@@ -120,7 +120,15 @@ async def create_virtual_card(
         raise HTTPException(status_code=400, detail="You must have an active physical credit card first")
 
     # Get the parent account ID attached to the physical card
-    account = await db.accounts.find_one({"card_id": physical_card["id"]})
+    card_id = physical_card.get("id") or str(physical_card.get("_id"))
+    account = await db.accounts.find_one({"card_id": card_id})
+    if not account:
+        # Fallback for old legacy cards that didn't have card_id mapped properly
+        account = await db.accounts.find_one({
+            "customer_id": customer["customer_id"],
+            "account_type": "credit"
+        })
+        
     if not account:
         raise HTTPException(status_code=404, detail="Physical card account not found")
 
