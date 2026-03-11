@@ -89,32 +89,34 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="relative flex min-h-[calc(100vh-80px)] w-full flex-col overflow-x-hidden mesh-gradient pb-24 font-display">
+        <div className="relative flex min-h-[calc(100vh-80px)] md:min-h-screen w-full flex-col overflow-x-hidden mesh-gradient pb-24 md:pb-8 font-display">
             {/* Header */}
             <header className="flex items-center px-6 pt-8 pb-4 justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-full border border-primary/20 p-0.5">
+                    <div className="size-12 rounded-full border-2 border-primary/40 p-0.5 shadow-glow-green">
                         <img
                             alt="User Profile"
                             className="rounded-full w-full h-full object-cover"
-                            src="https://images.unsplash.com/photo-1568602471122-7832951cc4c5?q=80&w=200&auto=format&fit=crop"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAY5NNeAkOaCfAMrl3FGAuzimQN7cCglkn6u31YB1Jy3JsfzU0czpLSnrd4gQXyLsfNl40dOg_34b8piCk9wDFJe4QgZd4pnJMjrJCL1TXEmSGp7Fot4s73y2y_XRhC6v_dxYKpKcp4VFEdc0KEg2VCATQg7QN6tKjqILd_dLrSwo8IZsaUw0pes33lCsHEgZIX6VxEcfOAikDqP89crh1Kaa6kj2Gjc_zHPjnZN1B0x0PrFpSmB_TWLL5xhuMLYPdZ5QRscYWIMWzU"
                         />
                     </div>
                     <div>
-                        <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Premium Tier</p>
-                        <h2 className="text-slate-900 dark:text-slate-100 text-sm font-semibold leading-tight">
+                        <p className="text-[10px] uppercase tracking-widest text-[#a0a0a0] font-bold">Premium Tier</p>
+                        <h2 className="text-white text-base font-semibold leading-tight font-outfit">
                             {customer?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "Misafir"}
                         </h2>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <button className="flex size-10 items-center justify-center rounded-full glass-card text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                <div className="flex gap-3">
+                    <button className="flex size-10 items-center justify-center rounded-full glass-card text-white hover:bg-white/10 transition-colors shadow-premium">
                         <span className="material-symbols-outlined text-[20px]">search</span>
                     </button>
-                    <button className="relative flex size-10 items-center justify-center rounded-full glass-card text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                    <button className="relative flex size-10 items-center justify-center rounded-full glass-card text-white hover:bg-white/10 transition-colors shadow-premium">
                         <span className="material-symbols-outlined text-[20px]">notifications</span>
-                        {customer?.status !== "active" && (
-                            <span className="absolute top-2 right-2 size-2 bg-rose-500 rounded-full border-2 border-white dark:border-[#0a0a16]"></span>
+                        {customer?.status !== "active" ? (
+                            <span className="absolute top-2 right-2 size-2.5 bg-[#ff5252] rounded-full border-2 border-[#121212]"></span>
+                        ) : (
+                            <span className="absolute top-2 right-2 size-2.5 bg-primary rounded-full border-2 border-[#121212]"></span>
                         )}
                     </button>
                 </div>
@@ -123,36 +125,36 @@ export default function DashboardPage() {
             {/* Customer Registration Form */}
             {showCustomerForm && !customer && (
                 <section className="px-6 mb-6">
-                    <div className="glass-card !bg-amber-500/10 !border-amber-500/30 rounded-xl p-6">
+                    <div className="glass-card !bg-amber-500/10 !border-amber-500/30 rounded-2xl p-6 shadow-premium">
                         <div className="flex items-center gap-3 mb-4">
-                            <AlertCircle size={24} className="text-amber-500" />
-                            <h3 className="text-amber-600 dark:text-amber-400 font-semibold text-lg">Profili Tamamlayın</h3>
+                            <AlertCircle size={24} className="text-amber-500 flex-shrink-0" />
+                            <h3 className="text-amber-400 font-bold text-lg font-outfit">Profili Tamamlayın</h3>
                         </div>
-                        <p className="text-slate-600 dark:text-slate-300 mb-6 text-sm">
+                        <p className="text-slate-300 mb-6 text-sm">
                             Bankacılık işlemlerine başlamak için lütfen profil bilgilerinizi doldurun.
                         </p>
                         <form onSubmit={createCustomer} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Ad Soyad</label>
-                                    <input className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="Ali Veli" value={customerForm.full_name} onChange={e => setCustomerForm({ ...customerForm, full_name: e.target.value })} required />
+                                    <label className="block text-[10px] font-bold text-[#a0a0a0] mb-1 uppercase tracking-wider">Ad Soyad</label>
+                                    <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="Ali Veli" value={customerForm.full_name} onChange={e => setCustomerForm({ ...customerForm, full_name: e.target.value })} required />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">TC Kimlik</label>
-                                    <input className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="11 haneli" value={customerForm.national_id} onChange={e => setCustomerForm({ ...customerForm, national_id: e.target.value })} required pattern="\\d{11}" maxLength="11" />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Telefon</label>
-                                    <input className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="+905551234567" value={customerForm.phone} onChange={e => setCustomerForm({ ...customerForm, phone: e.target.value })} required />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Doğum Tarihi</label>
-                                    <input type="date" className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" value={customerForm.date_of_birth} onChange={e => setCustomerForm({ ...customerForm, date_of_birth: e.target.value })} required />
+                                    <label className="block text-[10px] font-bold text-[#a0a0a0] mb-1 uppercase tracking-wider">TC Kimlik</label>
+                                    <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="11 haneli" value={customerForm.national_id} onChange={e => setCustomerForm({ ...customerForm, national_id: e.target.value })} required pattern="\\d{11}" maxLength="11" />
                                 </div>
                             </div>
-                            <button type="submit" className="w-full bg-primary text-white py-3 rounded-xl font-semibold shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all mt-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-[#a0a0a0] mb-1 uppercase tracking-wider">Telefon</label>
+                                    <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="+905551234567" value={customerForm.phone} onChange={e => setCustomerForm({ ...customerForm, phone: e.target.value })} required />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-[#a0a0a0] mb-1 uppercase tracking-wider">Doğum Tarihi</label>
+                                    <input type="date" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all [color-scheme:dark]" value={customerForm.date_of_birth} onChange={e => setCustomerForm({ ...customerForm, date_of_birth: e.target.value })} required />
+                                </div>
+                            </div>
+                            <button type="submit" className="w-full bg-primary text-[#0a0a16] py-4 rounded-xl font-bold text-lg shadow-[0_0_15px_rgba(19,236,91,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all mt-4 font-outfit">
                                 Profili Oluştur
                             </button>
                         </form>
@@ -162,35 +164,35 @@ export default function DashboardPage() {
 
             {/* Balance Section */}
             {customer && (
-                <section className="px-6 py-6 text-center cursor-pointer" onClick={() => setShowBalance(!showBalance)}>
-                    <p className="text-slate-500 text-sm font-medium mb-1 font-outfit">Toplam Bakiyen</p>
-                    <h1 className="text-slate-900 dark:text-slate-100 tracking-tight text-5xl font-bold leading-tight neon-glow font-outfit">
+                <section className="px-6 py-6 text-center cursor-pointer transition-transform active:scale-95" onClick={() => setShowBalance(!showBalance)}>
+                    <p className="text-[#a0a0a0] text-sm font-medium mb-1 font-outfit">Toplam Bakiyen</p>
+                    <h1 className="text-white tracking-tight text-5xl md:text-6xl font-bold leading-tight neon-glow font-outfit">
                         {showBalance ? (
                             <>
-                                ₺{wholeNumber}<span className="text-2xl opacity-60">.{decimalPart}</span>
+                                ₺{wholeNumber}<span className="text-2xl md:text-3xl opacity-60">.{decimalPart}</span>
                             </>
                         ) : (
                             <span className="tracking-widest opacity-80">••••••••</span>
                         )}
                     </h1>
-                    <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                        <span className="material-symbols-outlined text-emerald-500 text-xs">trending_up</span>
-                        <p className="text-emerald-500 text-[10px] font-bold uppercase tracking-wider">+%2.5 bu ay</p>
+                    <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+                        <span className="material-symbols-outlined text-primary text-xs">trending_up</span>
+                        <p className="text-primary text-[10px] font-bold uppercase tracking-wider">+%2.5 bu ay</p>
                     </div>
                 </section>
             )}
 
             {/* 3D Floating Card */}
             {customer && accounts.length > 0 && (
-                <section className="px-6 py-4">
-                    <div className="relative group">
+                <section className="px-6 py-4 flex justify-center">
+                    <div className="relative group w-full max-w-sm">
                         {/* Shadow/Glow behind card */}
-                        <div className="absolute inset-0 bg-primary/30 blur-[40px] rounded-xl translate-y-4"></div>
+                        <div className="absolute inset-0 bg-primary/20 blur-[40px] rounded-[2rem] translate-y-4"></div>
 
                         {/* Main Card Body */}
-                        <div className="relative glass-card !bg-black/80 dark:!bg-white/5 rounded-2xl p-6 aspect-[1.586/1] overflow-hidden flex flex-col justify-between border-white/20 shadow-2xl transition-transform duration-500 hover:scale-[1.02]">
+                        <div className="relative glass-card rounded-[2rem] p-7 aspect-[1.586/1] overflow-hidden flex flex-col justify-between border-white/20 shadow-card transition-transform duration-300 hover:scale-[1.02]">
                             {/* Card Background Elements */}
-                            <div className="absolute -top-10 -right-10 size-40 bg-primary/40 rounded-full blur-3xl"></div>
+                            <div className="absolute -top-10 -right-10 size-40 bg-primary/20 rounded-full blur-3xl"></div>
                             <div className="absolute top-0 right-0 p-6 opacity-30 text-white">
                                 <svg fill="none" height="40" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" width="40">
                                     <circle cx="12" cy="12" r="10"></circle>
@@ -200,26 +202,26 @@ export default function DashboardPage() {
 
                             <div className="flex justify-between items-start z-10">
                                 <div className="flex flex-col">
-                                    <p className="text-[10px] text-slate-300 font-bold uppercase tracking-[0.2em] mb-1">Hesap / İban</p>
-                                    <p className="text-white text-lg font-outfit font-semibold">{mainAccount?.account_type === "checking" ? "Vadesiz" : "Tasarruf"}</p>
+                                    <p className="text-[10px] text-slate-300 font-bold uppercase tracking-[0.2em] mb-1">Hesap Türü</p>
+                                    <p className="text-white text-lg font-outfit font-bold tracking-wide">{mainAccount?.account_type === "checking" ? "Vadesiz" : "Tasarruf"}</p>
                                 </div>
-                                <span className="material-symbols-outlined text-slate-100 text-3xl">contactless</span>
+                                <span className="material-symbols-outlined text-white text-[32px] opacity-90">contactless</span>
                             </div>
 
                             <div className="space-y-4 z-10">
                                 <div className="flex gap-4 items-center">
-                                    <span className="text-slate-100 text-sm md:text-md opacity-80 tracking-widest font-mono">
+                                    <span className="text-white text-lg sm:text-xl md:text-2xl font-medium opacity-90 tracking-widest font-mono drop-shadow-md">
                                         {mainAccount?.iban ? `${mainAccount.iban.substring(0, 4)} ${mainAccount.iban.substring(4, 8)} **** **** ${mainAccount.iban.substring(mainAccount.iban.length - 4)}` : "**** **** **** 8829"}
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-end">
                                     <div className="flex flex-col">
-                                        <p className="text-[10px] text-slate-300 font-bold uppercase tracking-[0.2em]">Ad Soyad</p>
-                                        <p className="text-slate-100 text-sm font-outfit tracking-wider">{customer?.full_name?.toUpperCase()}</p>
+                                        <p className="text-[10px] text-slate-300 font-bold uppercase tracking-[0.2em] mb-1">Hesap Sahibi</p>
+                                        <p className="text-white text-sm font-outfit tracking-wide font-semibold">{customer?.full_name?.toUpperCase()}</p>
                                     </div>
                                     <div className="flex flex-col items-end">
-                                        <p className="text-[10px] text-slate-300 font-bold uppercase tracking-[0.2em]">Aktif</p>
-                                        <p className="text-slate-100 text-sm font-outfit">09/28</p>
+                                        <p className="text-[10px] text-slate-300 font-bold uppercase tracking-[0.2em] mb-1">Geçerlilik</p>
+                                        <p className="text-white text-sm font-outfit font-semibold">09/28</p>
                                     </div>
                                 </div>
                             </div>
@@ -229,64 +231,64 @@ export default function DashboardPage() {
             )}
 
             {/* Quick Actions */}
-            <section className="grid grid-cols-3 gap-4 px-6 py-6">
+            <section className="grid grid-cols-3 gap-4 px-6 py-6 max-w-md mx-auto w-full">
                 <Link to="/customer/transfer" className="flex flex-col items-center gap-2 group cursor-pointer no-underline">
-                    <div className="size-16 rounded-2xl glass-card flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary/5 border-primary/20 group-hover:scale-105 transition-transform duration-300 shadow-lg shadow-primary/10">
-                        <span className="material-symbols-outlined text-primary text-3xl">send</span>
+                    <div className="size-16 rounded-2xl glass-card flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary/5 border-primary/20 group-hover:scale-105 group-active:scale-95 transition-all duration-300 shadow-premium">
+                        <span className="material-symbols-outlined text-primary text-[32px]">send</span>
                     </div>
-                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 font-outfit">Gönder</p>
+                    <p className="text-xs font-semibold text-[#a0a0a0] group-hover:text-white transition-colors font-outfit">Gönder</p>
                 </Link>
-                <Link to="/customer/transfer" className="flex flex-col items-center gap-2 group cursor-pointer no-underline">
-                    <div className="size-16 rounded-2xl glass-card flex items-center justify-center bg-gradient-to-br from-emerald-500/30 to-emerald-500/5 border-emerald-500/20 group-hover:scale-105 transition-transform duration-300 shadow-lg shadow-emerald-500/10">
-                        <span className="material-symbols-outlined text-emerald-500 text-3xl">download</span>
+                <Link to="/customer/payment-requests" className="flex flex-col items-center gap-2 group cursor-pointer no-underline">
+                    <div className="size-16 rounded-2xl glass-card flex items-center justify-center bg-gradient-to-br from-emerald-500/30 to-emerald-500/5 border-emerald-500/20 group-hover:scale-105 group-active:scale-95 transition-all duration-300 shadow-premium">
+                        <span className="material-symbols-outlined text-emerald-500 text-[32px]">download</span>
                     </div>
-                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 font-outfit">Al / İste</p>
+                    <p className="text-xs font-semibold text-[#a0a0a0] group-hover:text-white transition-colors font-outfit">Al / İste</p>
                 </Link>
                 <Link to="/customer/accounts" className="flex flex-col items-center gap-2 group cursor-pointer no-underline">
-                    <div className="size-16 rounded-2xl glass-card flex items-center justify-center bg-gradient-to-br from-amber-500/30 to-amber-500/5 border-amber-500/20 group-hover:scale-105 transition-transform duration-300 shadow-lg shadow-amber-500/10">
-                        <span className="material-symbols-outlined text-amber-500 text-3xl">add_card</span>
+                    <div className="size-16 rounded-2xl glass-card flex items-center justify-center bg-gradient-to-br from-amber-500/30 to-amber-500/5 border-amber-500/20 group-hover:scale-105 group-active:scale-95 transition-all duration-300 shadow-premium">
+                        <span className="material-symbols-outlined text-amber-500 text-[32px]">payments</span>
                     </div>
-                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 font-outfit">Yeni Hesap</p>
+                    <p className="text-xs font-semibold text-[#a0a0a0] group-hover:text-white transition-colors font-outfit">Yeni Hesap</p>
                 </Link>
             </section>
 
             {/* Transactions List */}
-            <section className="px-6 py-4 flex-1">
+            <section className="px-6 py-4 flex-1 md:max-w-3xl md:mx-auto md:w-full">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-slate-900 dark:text-slate-100 font-outfit font-semibold text-lg">Son İşlemler</h3>
-                    <Link to="/customer/ledger" className="text-primary text-xs font-bold uppercase tracking-wider hover:underline">Tümünü Gör</Link>
+                    <h3 className="text-white font-outfit font-bold text-xl">Son İşlemler</h3>
+                    <Link to="/customer/ledger" className="text-primary text-xs font-bold uppercase tracking-wider hover:opacity-80 transition-opacity">Tümünü Gör</Link>
                 </div>
 
                 {recentTx.length === 0 ? (
-                    <div className="p-8 text-center glass-card rounded-2xl">
-                        <span className="material-symbols-outlined text-5xl text-slate-400 mb-2">receipt_long</span>
-                        <p className="text-slate-500 text-sm">Henüz bir işleminiz bulunmuyor.</p>
+                    <div className="p-8 text-center glass-card rounded-2xl shadow-premium">
+                        <span className="material-symbols-outlined text-5xl text-slate-500 mb-2">receipt_long</span>
+                        <p className="text-[#a0a0a0] text-sm font-medium">Henüz bir işleminiz bulunmuyor.</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
                         {recentTx.map((tx, idx) => {
                             const isCredit = tx.type === "CREDIT";
                             const icon = isCredit ? "arrow_downward" : "arrow_upward";
-                            const iconColorClass = isCredit ? "text-emerald-500" : "text-rose-500";
-                            const bgClass = isCredit ? "bg-emerald-500/10" : "bg-rose-500/10";
+                            const iconColorClass = isCredit ? "text-emerald-500" : "text-[#ff5252]";
+                            const bgClass = isCredit ? "bg-emerald-500/10" : "bg-[#ff5252]/10";
                             const defaultTitle = isCredit ? "Gelen Para" : "Giden Para";
 
                             return (
-                                <div key={tx.id || idx} className="glass-card rounded-xl p-4 flex items-center justify-between border-black/5 dark:border-white/5 hover:border-black/10 dark:hover:border-white/10 transition-all cursor-pointer">
+                                <div key={tx.id || idx} className="glass-card rounded-2xl p-4 flex items-center justify-between border-white/5 hover:border-white/10 hover:bg-white/5 transition-all cursor-pointer shadow-sm">
                                     <div className="flex items-center gap-4">
-                                        <div className={`size-10 rounded-lg ${bgClass} flex items-center justify-center`}>
-                                            <span className={`material-symbols-outlined ${iconColorClass}`}>{icon}</span>
+                                        <div className={`size-12 rounded-xl ${bgClass} flex items-center justify-center shrink-0`}>
+                                            <span className={`material-symbols-outlined ${iconColorClass} text-2xl`}>{icon}</span>
                                         </div>
-                                        <div>
-                                            <p className="text-slate-900 dark:text-slate-100 font-outfit font-medium text-sm">
+                                        <div className="flex-1 min-w-0 pr-4">
+                                            <p className="text-white font-outfit font-bold text-base truncate">
                                                 {tx.description || defaultTitle}
                                             </p>
-                                            <p className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">
+                                            <p className="text-[#a0a0a0] text-[10px] uppercase font-bold tracking-wider truncate mt-0.5">
                                                 {tx.category || "Transfer"} • {new Date(tx.created_at).toLocaleDateString("tr-TR", { month: "short", day: "numeric" })}
                                             </p>
                                         </div>
                                     </div>
-                                    <p className={`${isCredit ? 'text-emerald-500' : 'text-slate-900 dark:text-slate-100'} font-outfit font-bold`}>
+                                    <p className={`${isCredit ? 'text-emerald-500' : 'text-white'} font-outfit font-bold text-lg whitespace-nowrap`}>
                                         {isCredit ? '+' : '-'}₺{Math.abs(tx.amount).toLocaleString("tr-TR", { minimumFractionDigits: 2 })}
                                     </p>
                                 </div>
