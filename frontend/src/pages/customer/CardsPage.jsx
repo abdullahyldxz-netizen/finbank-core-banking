@@ -302,8 +302,9 @@ export default function CardsPage() {
                 </TabButton>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24 }}>
-                <div style={{ display: "grid", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "350px 1fr", gap: 32, alignItems: "start" }}>
+                {/* Column 1: Selection & Creation */}
+                <div style={{ display: "grid", gap: 24 }}>
                     <div className="card">
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                             <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Card selection</h3>
@@ -353,158 +354,161 @@ export default function CardsPage() {
                     )}
                 </div>
 
-                {selectedCard ? (
-                    <>
-                        <div style={{ display: "grid", gap: 16 }}>
-                            {/* 3D Flip Card Container */}
-                            <div className={`flip-card ${isFlipped ? "flipped" : ""}`}>
-                                <div className="flip-card-inner">
-                                    {/* Front Face */}
-                                    <div className="flip-card-front" style={{ ...cardVisualStyle, background: cardTypeTab === "debit" ? "linear-gradient(135deg, #1e293b 0%, #ef4444 55%, #0f172a 100%)" : selectedCard.is_virtual ? "linear-gradient(135deg, #064e3b 0%, #10b981 100%)" : "linear-gradient(135deg, #111827 0%, #2563eb 55%, #0f172a 100%)" }}>
-                                        <div style={{ position: "absolute", top: -26, right: -16, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.14)" }} />
-                                        <div style={{ position: "absolute", bottom: -36, left: -16, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
+                {/* Column 2: Visual Card, Stats, and Management */}
+                <div style={{ display: "grid", gap: 32 }}>
+                    {selectedCard ? (
+                        <>
+                            <div style={{ display: "grid", gridTemplateColumns: "400px 1fr", gap: 24, alignItems: "start" }}>
+                                <div>
+                                    {/* 3D Flip Card Container */}
+                                    <div className={`flip-card ${isFlipped ? "flipped" : ""}`} style={{ height: 260 }}>
+                                        <div className="flip-card-inner">
+                                            {/* Front Face */}
+                                            <div className="flip-card-front" style={{ ...cardVisualStyle, background: cardTypeTab === "debit" ? "linear-gradient(135deg, #1e293b 0%, #ef4444 55%, #0f172a 100%)" : selectedCard.is_virtual ? "linear-gradient(135deg, #064e3b 0%, #10b981 100%)" : "linear-gradient(135deg, #111827 0%, #2563eb 55%, #0f172a 100%)" }}>
+                                                <div style={{ position: "absolute", top: -26, right: -16, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.14)" }} />
+                                                <div style={{ position: "absolute", bottom: -36, left: -16, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
 
-                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 36, position: "relative", zIndex: 1 }}>
-                                            <div>
-                                                <div style={{ fontWeight: 800, fontSize: 24, letterSpacing: -0.5 }}>FinBank</div>
-                                                <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>{selectedCard.card_name || (cardTypeTab === "debit" ? "Debit Card" : "Card")}</div>
-                                            </div>
-                                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                                <span style={typeChipStyle(selectedCard.is_virtual)}>{cardTypeTab === "debit" ? "Debit Card" : selectedCard.is_virtual ? "Virtual Card" : "Physical Card"}</span>
-                                            </div>
-                                        </div>
-
-                                        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                                            <div style={{ width: 44, height: 32, background: "linear-gradient(135deg, #ffd700, #ffb300)", borderRadius: 6, opacity: 0.9, position: "relative", overflow: "hidden" }}>
-                                                <div style={{ position: "absolute", top: "50%", left: 0, width: "100%", height: 1, background: "rgba(0,0,0,0.2)" }} />
-                                                <div style={{ position: "absolute", left: "50%", top: 0, width: 1, height: "100%", background: "rgba(0,0,0,0.2)" }} />
-                                            </div>
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" /><path d="M16 8h.01" /><path d="M16 16h.01" /><path d="M8 8h.01" /><path d="M8 16h.01" /><path d="M12 12h.01" /></svg>
-                                        </div>
-
-                                        <div style={{ marginBottom: 20 }}>
-                                            <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1.5 }}>Card number</div>
-                                            <div style={{ fontFamily: "monospace", fontSize: 24, fontWeight: 700, letterSpacing: 3, marginTop: 8 }}>
-                                                {showSensitive ? formatCardNumber(selectedCard.card_number) : maskCardNumber(selectedCard.card_number)}
-                                            </div>
-                                        </div>
- 
-                                        <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-end", position: "relative", zIndex: 1 }}>
-                                            <div>
-                                                <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1.5 }}>Cardholder</div>
-                                                <div style={{ fontWeight: 700, marginTop: 6, fontSize: 15 }}>{selectedCard.cardholder_name || selectedCard.holder_name || "Customer"}</div>
-                                            </div>
-                                            <div style={{ textAlign: "right", paddingRight: 8 }}>
-                                                <button type="button" onClick={() => setIsFlipped(true)} style={{ ...miniButtonStyle, padding: "8px 16px" }}>
-                                                    Flip to Back
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Back Face */}
-                                    <div className="flip-card-back">
-                                        <div style={{ width: "100%", height: 48, background: "#000", margin: "0 -28px 20px", width: "calc(100% + 56px)" }} />
-                                        <div style={{ width: "100%", height: 36, background: "rgba(255,255,255,0.1)", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "flex-end", padding: "0 12px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                                            <span style={{ fontFamily: "monospace", fontWeight: 800, color: "#fff", fontSize: 16 }}>
-                                                {showSensitive ? selectedCard.cvv || "123" : "•••"}
-                                            </span>
-                                        </div>
-
-                                        <div style={{ padding: "16px 24px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                                            <div>
-                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                                                    <div style={{ fontSize: 12, opacity: 0.7 }}>Expiry: <strong style={{ fontFamily: "monospace", fontSize: 14 }}>{selectedCard.expiry_date}</strong></div>
-                                                    <button type="button" onClick={() => setShowSensitive((prev) => !prev)} style={{ ...miniButtonStyle, padding: "6px 12px", background: showSensitive ? "rgba(99, 102, 241, 0.2)" : "rgba(255,255,255,0.08)" }}>
-                                                        {showSensitive ? <EyeOff size={14} /> : <Eye size={14} />} {showSensitive ? "Hide" : "Show"}
-                                                    </button>
+                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 36, position: "relative", zIndex: 1 }}>
+                                                    <div>
+                                                        <div style={{ fontWeight: 800, fontSize: 24, letterSpacing: -0.5 }}>FinBank</div>
+                                                        <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>{selectedCard.card_name || (cardTypeTab === "debit" ? "Debit Card" : "Card")}</div>
+                                                    </div>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                                        <span style={typeChipStyle(selectedCard.is_virtual)}>{cardTypeTab === "debit" ? "Debit Card" : selectedCard.is_virtual ? "Virtual Card" : "Physical Card"}</span>
+                                                    </div>
                                                 </div>
 
-                                                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                                    <button type="button" onClick={() => { navigator.clipboard.writeText(selectedCard.card_number); toast.success("Card number copied."); }} style={miniButtonStyle}>
-                                                        <Copy size={14} /> Copy card no
-                                                    </button>
-                                                    <button type="button" onClick={handleToggleFreeze} disabled={actionLoading} style={{ ...statusButtonStyle(selectedCard.status), cursor: actionLoading ? "not-allowed" : "pointer", opacity: actionLoading ? 0.7 : 1 }}>
-                                                        {selectedCard.status === "active" ? "Active (Freeze)" : "Frozen (Unfreeze)"}
-                                                    </button>
-                                                    {selectedCard.is_virtual && (
-                                                        <button type="button" onClick={handleDeleteVirtualCard} disabled={actionLoading} style={{ ...miniButtonStyle, border: "1px solid rgba(239, 68, 68, 0.4)", color: "#fca5a5" }}>
-                                                            Delete
+                                                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                                                    <div style={{ width: 44, height: 32, background: "linear-gradient(135deg, #ffd700, #ffb300)", borderRadius: 6, opacity: 0.9, position: "relative", overflow: "hidden" }}>
+                                                        <div style={{ position: "absolute", top: "50%", left: 0, width: "100%", height: 1, background: "rgba(0,0,0,0.2)" }} />
+                                                        <div style={{ position: "absolute", left: "50%", top: 0, width: 1, height: "100%", background: "rgba(0,0,0,0.2)" }} />
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ marginBottom: 20 }}>
+                                                    <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1.5 }}>Card number</div>
+                                                    <div style={{ fontFamily: "monospace", fontSize: 24, fontWeight: 700, letterSpacing: 3, marginTop: 8 }}>
+                                                        {showSensitive ? formatCardNumber(selectedCard.card_number) : maskCardNumber(selectedCard.card_number)}
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-end", position: "relative", zIndex: 1 }}>
+                                                    <div>
+                                                        <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1.5 }}>Cardholder</div>
+                                                        <div style={{ fontWeight: 700, marginTop: 6, fontSize: 15 }}>{selectedCard.cardholder_name || selectedCard.holder_name || "Customer"}</div>
+                                                    </div>
+                                                    <div style={{ textAlign: "right", paddingRight: 8 }}>
+                                                        <button type="button" onClick={() => setIsFlipped(true)} style={{ ...miniButtonStyle, padding: "8px 16px" }}>
+                                                            Flip to Back
                                                         </button>
-                                                    )}
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            <div style={{ textAlign: "right" }}>
-                                                <button type="button" onClick={() => setIsFlipped(false)} style={{ ...miniButtonStyle, padding: "8px 16px" }}>
-                                                    Flip to Front
-                                                </button>
+                                            {/* Back Face */}
+                                            <div className="flip-card-back">
+                                                <div style={{ width: "100%", height: 48, background: "#000", margin: "0 -28px 20px", width: "calc(100% + 56px)" }} />
+                                                <div style={{ width: "100%", height: 36, background: "rgba(255,255,255,0.1)", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "flex-end", padding: "0 12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                                    <span style={{ fontFamily: "monospace", fontWeight: 800, color: "#fff", fontSize: 16 }}>
+                                                        {showSensitive ? selectedCard.cvv || "123" : "•••"}
+                                                    </span>
+                                                </div>
+
+                                                <div style={{ padding: "16px 24px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                                                    <div>
+                                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                                                            <div style={{ fontSize: 12, opacity: 0.7 }}>Expiry: <strong style={{ fontFamily: "monospace", fontSize: 14 }}>{selectedCard.expiry_date}</strong></div>
+                                                            <button type="button" onClick={() => setShowSensitive((prev) => !prev)} style={{ ...miniButtonStyle, padding: "6px 12px", background: showSensitive ? "rgba(99, 102, 241, 0.2)" : "rgba(255,255,255,0.08)" }}>
+                                                                {showSensitive ? <EyeOff size={14} /> : <Eye size={14} />} {showSensitive ? "Hide" : "Show"}
+                                                            </button>
+                                                        </div>
+
+                                                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                                            <button type="button" onClick={() => { navigator.clipboard.writeText(selectedCard.card_number); toast.success("Card number copied."); }} style={miniButtonStyle}>
+                                                                <Copy size={14} /> Copy card no
+                                                            </button>
+                                                            <button type="button" onClick={handleToggleFreeze} disabled={actionLoading} style={{ ...statusButtonStyle(selectedCard.status), cursor: actionLoading ? "not-allowed" : "pointer", opacity: actionLoading ? 0.7 : 1 }}>
+                                                                {selectedCard.status === "active" ? "Active (Freeze)" : "Frozen (Unfreeze)"}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div style={{ textAlign: "right" }}>
+                                                        <button type="button" onClick={() => setIsFlipped(false)} style={{ ...miniButtonStyle, padding: "8px 16px" }}>
+                                                            Flip to Front
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style={{ marginTop: 16 }}>
+                                        <div className="card">
+                                            <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>Card settings</h3>
+                                            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                                                <InteractiveChip
+                                                    active={selectedCard.internet_shopping}
+                                                    onClick={() => handleToggleSetting("internet_shopping", selectedCard.internet_shopping)}
+                                                    disabled={actionLoading}
+                                                >
+                                                    Internet shopping
+                                                </InteractiveChip>
+                                                <InteractiveChip
+                                                    active={selectedCard.contactless}
+                                                    onClick={() => handleToggleSetting("contactless", selectedCard.contactless)}
+                                                    disabled={actionLoading || selectedCard.is_virtual}
+                                                >
+                                                    Contactless
+                                                </InteractiveChip>
+                                                {selectedCard.is_virtual && (
+                                                    <button type="button" onClick={handleDeleteVirtualCard} disabled={actionLoading} style={{ ...miniButtonStyle, border: "1px solid rgba(239, 68, 68, 0.4)", color: "#fca5a5" }}>
+                                                        Delete Virtual Card
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {cardTypeTab === "credit" ? (
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                                    <MetricCard label="Available limit" value={formatMoney(selectedCard.available_limit)} tone="#10b981" icon={<ShieldCheck size={18} />} />
-                                    <MetricCard label="Current debt" value={formatMoney(selectedCard.current_debt)} tone="#ef4444" icon={<DollarSign size={18} />} />
-                                    <MetricCard label="Min. payment due" value={formatMoney(selectedCard.min_payment_due)} tone="#f59e0b" icon={<CalendarDays size={18} />} />
-                                    <MetricCard label="Online limit" value={formatMoney(selectedCard.online_limit)} tone="#2563eb" icon={<Percent size={18} />} />
-                                </div>
-                            ) : (
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                                    <MetricCard label="Linked Account Balance" value={formatMoney(linkedBalance)} tone="#10b981" icon={<ShieldCheck size={18} />} />
-                                    <MetricCard label="Account Type" value={selectedCard.account_type === "checking" ? "Checking" : "Savings"} tone="#2563eb" icon={<Landmark size={18} />} />
-                                </div>
-                            )}
+                                <div style={{ display: "grid", gap: 16 }}>
+                                    {cardTypeTab === "credit" ? (
+                                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                                            <MetricCard label="Available limit" value={formatMoney(selectedCard.available_limit)} tone="#10b981" icon={<ShieldCheck size={18} />} />
+                                            <MetricCard label="Current debt" value={formatMoney(selectedCard.current_debt)} tone="#ef4444" icon={<DollarSign size={18} />} />
+                                            <MetricCard label="Min. payment due" value={formatMoney(selectedCard.min_payment_due)} tone="#f59e0b" icon={<CalendarDays size={18} />} />
+                                            <MetricCard label="Online limit" value={formatMoney(selectedCard.online_limit)} tone="#2563eb" icon={<Percent size={18} />} />
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                                            <MetricCard label="Linked Account Balance" value={formatMoney(linkedBalance)} tone="#10b981" icon={<ShieldCheck size={18} />} />
+                                            <MetricCard label="Account Type" value={selectedCard.account_type === "checking" ? "Checking" : "Savings"} tone="#2563eb" icon={<Landmark size={18} />} />
+                                        </div>
+                                    )}
 
-                            <div className="card">
-                                <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>Card settings</h3>
-                                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                                    <InteractiveChip
-                                        active={selectedCard.internet_shopping}
-                                        onClick={() => handleToggleSetting("internet_shopping", selectedCard.internet_shopping)}
-                                        disabled={actionLoading}
-                                    >
-                                        Internet shopping
-                                    </InteractiveChip>
-                                    <InteractiveChip
-                                        active={selectedCard.contactless}
-                                        onClick={() => handleToggleSetting("contactless", selectedCard.contactless)}
-                                        disabled={actionLoading || selectedCard.is_virtual}
-                                    >
-                                        Contactless
-                                    </InteractiveChip>
+                                    {cardTypeTab === "credit" && !selectedCard.is_virtual && (
+                                        <div className="card">
+                                            <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>Limit Operations</h3>
+                                            <button onClick={handleApplyLimit} disabled={actionLoading} style={{ ...primaryActionStyle, background: "var(--accent)", width: "100%" }}>
+                                                <ArrowUpRight size={18} /> Limit Increase Request
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
-                            {cardTypeTab === "credit" && !selectedCard.is_virtual && (
-                                <div className="card" style={{ marginTop: 16 }}>
-                                    <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>Limit Operations</h3>
-                                    <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 16 }}>
-                                        If you need a higher limit, you can request a limit increase. Your request will be reviewed.
-                                    </p>
-                                    <button
-                                        onClick={handleApplyLimit}
-                                        disabled={actionLoading}
-                                        style={{ ...primaryActionStyle, background: "var(--accent)" }}
-                                    >
-                                        <ArrowUpRight size={18} /> Limit Increase Request
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-
-                        {cardTypeTab === "credit" && (
-                            <div>
-                                <div style={{ display: "flex", gap: 6, background: "var(--bg-secondary)", borderRadius: 14, padding: 4, marginBottom: 16 }}>
+                            {/* Transactions and Management Tabs */}
+                            <div style={{ marginTop: 8 }}>
+                                <div style={{ display: "flex", gap: 6, background: "var(--bg-secondary)", borderRadius: 14, padding: 4, marginBottom: 16, width: "fit-content" }}>
                                     <TabButton active={activeTab === "transactions"} onClick={() => setActiveTab("transactions")}><Activity size={14} /> Transactions</TabButton>
-                                    <TabButton active={activeTab === "pay"} onClick={() => setActiveTab("pay")}><DollarSign size={14} /> Pay debt</TabButton>
-                                    <TabButton active={activeTab === "simulate"} onClick={() => setActiveTab("simulate")}><ShoppingCart size={14} /> Purchase</TabButton>
+                                    {cardTypeTab === "credit" && (
+                                        <>
+                                            <TabButton active={activeTab === "pay"} onClick={() => setActiveTab("pay")}><DollarSign size={14} /> Pay debt</TabButton>
+                                            <TabButton active={activeTab === "simulate"} onClick={() => setActiveTab("simulate")}><ShoppingCart size={14} /> Purchase</TabButton>
+                                        </>
+                                    )}
                                 </div>
 
-                                <div style={{ background: "var(--bg-card)", borderRadius: 20, border: "1px solid var(--border-color)", minHeight: 420, overflow: "hidden" }}>
+                                <div style={{ background: "var(--bg-card)", borderRadius: 20, border: "1px solid var(--border-color)", minHeight: 300, overflow: "hidden" }}>
                                     {activeTab === "transactions" ? (
                                         <div>
                                             <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--border-color)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -517,7 +521,7 @@ export default function CardsPage() {
                                                 </button>
                                             </div>
                                             {transactions.length === 0 ? (
-                                                <div style={{ padding: 56, textAlign: "center", color: "var(--text-secondary)" }}>Bu kart icin henuz hareket yok.</div>
+                                                <div style={{ padding: 56, textAlign: "center", color: "var(--text-secondary)" }}>No transactions found for this card.</div>
                                             ) : transactions.map((transaction) => {
                                                 const isPayment = transaction.type === "payment";
                                                 return (
@@ -527,8 +531,8 @@ export default function CardsPage() {
                                                                 {isPayment ? <ArrowDownRight size={18} /> : <ArrowUpRight size={18} />}
                                                             </div>
                                                             <div>
-                                                                <div style={{ fontWeight: 700 }}>{transaction.description || (isPayment ? "Kart odemesi" : "Kart harcamasi")}</div>
-                                                                <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{new Date(transaction.created_at).toLocaleString("tr-TR")}</div>
+                                                                <div style={{ fontWeight: 700 }}>{transaction.description || (isPayment ? "Card Payment" : "Card Purchase")}</div>
+                                                                <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{new Date(transaction.created_at).toLocaleString("en-US")}</div>
                                                             </div>
                                                         </div>
                                                         <div style={{ fontWeight: 800, color: isPayment ? "#10b981" : "#ef4444" }}>
@@ -538,9 +542,7 @@ export default function CardsPage() {
                                                 );
                                             })}
                                         </div>
-                                    ) : null}
-
-                                    {activeTab === "pay" ? (
+                                    ) : activeTab === "pay" ? (
                                         <div style={{ padding: 24 }}>
                                             <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 8 }}>Card debt payment</h3>
                                             <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 18 }}>Pay the debt of the selected card with one of your active accounts.</p>
@@ -564,9 +566,7 @@ export default function CardsPage() {
                                                 </button>
                                             </form>
                                         </div>
-                                    ) : null}
-
-                                    {activeTab === "simulate" ? (
+                                    ) : activeTab === "simulate" ? (
                                         <div style={{ padding: 24 }}>
                                             <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 8 }}>Card purchase</h3>
                                             <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 18 }}>You can create a test purchase for cards with internet access enabled.</p>
@@ -588,9 +588,13 @@ export default function CardsPage() {
                                     ) : null}
                                 </div>
                             </div>
-                        )}
-                    </>
-                ) : null}
+                        </>
+                    ) : (
+                        <div className="card" style={{ padding: 48, textAlign: "center", color: "var(--text-secondary)" }}>
+                            Please select a card from the left panel.
+                        </div>
+                    )}
+                </div>
             </div>
             <style>{"@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }"}</style>
         </div>
