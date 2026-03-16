@@ -68,11 +68,13 @@ async def fetch_external_banks():
 
     # Eger hic cekilemediyse, fallback olarak testleri aktif tutmak isterseniz:
     if not EXTERNAL_BANKS:
+        # Central Registry WebSocket 
         EXTERNAL_BANKS = {
+             "CENTRAL": "wss://plain-pond-13ed.goktugrecepakkus.workers.dev/ws/inter-bank/FINB",
              "DGBNK": "ws://127.0.0.1:8002/ws/inter-bank/FINB", 
              "TEST": "ws://127.0.0.1:8002/ws/inter-bank/FINB"
         }
-        print("[Init] Dis bankalar bos oldugu icin Test bankalari aktif edildi.")
+        print("[Init] Dis bankalar bos oldugu icin Test bankalari ve Central Registry aktif edildi.")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -650,7 +652,8 @@ async def generate_account_number(db) -> str:
 
 
 def build_iban(account_number: str) -> str:
-    return f"TR{random.randint(10,99)}000610{account_number.zfill(16)[:16]}"
+    # FINB ile baslayan 26 haneli IBAN uretimi: FINB (4) + 2 digits + 20 digits
+    return f"FINB{random.randint(10,99)}000619{account_number.zfill(14)[:14]}"
 
 
 def luhn_digit(number_without_check_digit: str) -> str:
@@ -713,17 +716,16 @@ async def resolve_target_account(db, body: TransferRequest) -> dict:
         if not account:
             # INTER-BANK LOGIC: If IBAN is not found in our DB, check if it belongs to another bank
             iban = body.target_iban.strip().upper()
-            if iban.startswith("TR") and len(iban) > 10:
-                # Let's say we check if it is explicitly NOT FinBank (e.g., our IBANs might start with TR11...)
-                # For this assignment, we use a simple substring match for specific mock banks 
-                
+            if (iban.startswith("TR") or iban.startswith("FINB")) and len(iban) > 10:
+                # Use simple heuristic to route unknown IBANs to the central registry
                 mapped_bank_code = None
                 if "DGBNK" in iban:
                     mapped_bank_code = "DGBNK"
                 elif "TEST" in iban:
                     mapped_bank_code = "TEST"
                 else:
-                    mapped_bank_code = "DGBNK" # Default unknown to DGBNK for testing
+                    # Central Registry will dispatch based on the target IBAN
+                    mapped_bank_code = "CENTRAL"
                 
                 return {
                     "account_id": "EXTERNAL",
