@@ -6,10 +6,10 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from supabase import create_client, Client
 
 # ENV
-SUPABASE_URL = "https://hjifqqcnrduddhytckgb.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqaWZxcWNucmR1ZGRoeXRja2diIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjIzMjE0MiwiZXhwIjoyMDg3ODA4MTQyfQ.kp3qwZuMAU8C-Nv07uDO2HGEcYEx78aJgKE21Pmyofg"
-MONGO_URL = "mongodb://mongo:27017"
-DB_NAME = "finbank"
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+MONGO_URL = os.getenv("MONGODB_URL", "mongodb://mongo:27017")
+DB_NAME = os.getenv("MONGODB_DB_NAME", "finbank")
 
 async def seed():
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)

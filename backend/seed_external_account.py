@@ -4,8 +4,8 @@ import uuid
 from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorClient
 
-MONGO_URL = "mongodb://mongo:27017"
-DB_NAME = "finbank"
+MONGO_URL = os.getenv("MONGODB_URL", "mongodb://mongo:27017")
+DB_NAME = os.getenv("MONGODB_DB_NAME", "finbank")
 
 async def seed():
     client = AsyncIOMotorClient(MONGO_URL)
