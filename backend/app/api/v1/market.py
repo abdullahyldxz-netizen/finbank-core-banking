@@ -35,7 +35,22 @@ TRACKED_CRYPTOS = [
     {"id": "ethereum", "symbol": "ETH", "name": "Ethereum"},
     {"id": "binancecoin", "symbol": "BNB", "name": "BNB"},
     {"id": "solana", "symbol": "SOL", "name": "Solana"},
-    {"id": "ripple", "symbol": "XRP", "name": "XRP"}
+    {"id": "ripple", "symbol": "XRP", "name": "XRP"},
+    {"id": "cardano", "symbol": "ADA", "name": "Cardano"},
+    {"id": "dogecoin", "symbol": "DOGE", "name": "Dogecoin"},
+    {"id": "polkadot", "symbol": "DOT", "name": "Polkadot"},
+    {"id": "avalanche-2", "symbol": "AVAX", "name": "Avalanche"},
+    {"id": "chainlink", "symbol": "LINK", "name": "Chainlink"},
+    {"id": "tron", "symbol": "TRX", "name": "TRON"},
+    {"id": "polygon", "symbol": "MATIC", "name": "Polygon"},
+    {"id": "shiba-inu", "symbol": "SHIB", "name": "Shiba Inu"},
+    {"id": "litecoin", "symbol": "LTC", "name": "Litecoin"},
+    {"id": "dai", "symbol": "DAI", "name": "Dai"},
+    {"id": "bitcoin-cash", "symbol": "BCH", "name": "Bitcoin Cash"},
+    {"id": "cosmos", "symbol": "ATOM", "name": "Cosmos"},
+    {"id": "near", "symbol": "NEAR", "name": "NEAR Protocol"},
+    {"id": "uniswap", "symbol": "UNI", "name": "Uniswap"},
+    {"id": "stellar", "symbol": "XLM", "name": "Stellar"},
 ]
 
 TRACKED_STOCKS = [
@@ -43,7 +58,25 @@ TRACKED_STOCKS = [
     {"symbol": "TSLA", "name": "Tesla Inc."},
     {"symbol": "MSFT", "name": "Microsoft Corp."},
     {"symbol": "NVDA", "name": "NVIDIA Corp."},
-    {"symbol": "AMZN", "name": "Amazon.com Inc."}
+    {"symbol": "AMZN", "name": "Amazon.com Inc."},
+    {"symbol": "GOOGL", "name": "Alphabet Inc."},
+    {"symbol": "META", "name": "Meta Platforms"},
+    {"symbol": "NFLX", "name": "Netflix Inc."},
+    {"symbol": "BRK-B", "name": "Berkshire Hathaway"},
+    {"symbol": "V", "name": "Visa Inc."},
+    {"symbol": "JPM", "name": "JPMorgan Chase"},
+    {"symbol": "WMT", "name": "Walmart Inc."},
+    {"symbol": "MA", "name": "Mastercard Inc."},
+    {"symbol": "PG", "name": "Procter & Gamble"},
+    {"symbol": "AMD", "name": "Advanced Micro Devices"},
+    {"symbol": "DIS", "name": "Walt Disney Co."},
+    {"symbol": "ADBE", "name": "Adobe Inc."},
+    {"symbol": "CRM", "name": "Salesforce Inc."},
+    {"symbol": "PYPL", "name": "PayPal Holdings"},
+    {"symbol": "KO", "name": "Coca-Cola Co."},
+    {"symbol": "PEP", "name": "PepsiCo Inc."},
+    {"symbol": "ORCL", "name": "Oracle Corp."},
+    {"symbol": "IBM", "name": "IBM Corp."},
 ]
 
 @router.get("/crypto", response_model=List[MarketAsset])
@@ -90,7 +123,7 @@ async def get_crypto_prices():
             return crypto_cache["data"]
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, 
-            detail="Piyasa verilerine şu an ulaşılamıyor (Crypto)"
+            detail="Market data is currently unavailable (Crypto)"
         )
 
 @router.get("/stocks", response_model=List[MarketAsset])
@@ -144,7 +177,7 @@ async def get_stock_prices():
             return stock_cache["data"]
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, 
-            detail="Piyasa verilerine şu an ulaşılamıyor (Stocks)"
+            detail="Market data is currently unavailable (Stocks)"
         )
 
 
@@ -193,7 +226,7 @@ async def buy_asset(
     # 1. Fetch current price
     price = await _get_current_asset_price(body.asset_id, body.asset_type)
     if not price:
-        raise HTTPException(status_code=404, detail="Varlık fiyati bulunamadi")
+        raise HTTPException(status_code=404, detail="Asset price not found")
     
     # 2. Calculate Commission (1.5%)
     total_value = body.quantity * price
@@ -214,10 +247,10 @@ async def buy_asset(
             commission_amount=commission,
             created_by=current_user["user_id"]
         )
-        return {"status": "success", "transaction_ref": txn_ref, "message": "Alim islemi basarili"}
+        return {"status": "success", "transaction_ref": txn_ref, "message": "Purchase successful"}
     except Exception as e:
         logger.error("Trade execution failed: BUY", error=str(e))
-        raise HTTPException(status_code=400, detail=f"Alim islemi basarisiz: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Purchase failed: {str(e)}")
 
 
 @router.post("/sell")
@@ -251,10 +284,10 @@ async def sell_asset(
             commission_amount=commission,
             created_by=current_user["user_id"]
         )
-        return {"status": "success", "transaction_ref": txn_ref, "message": "Satim islemi basarili"}
+        return {"status": "success", "transaction_ref": txn_ref, "message": "Sale successful"}
     except Exception as e:
         logger.error("Trade execution failed: SELL", error=str(e))
-        raise HTTPException(status_code=400, detail=f"Satim islemi basarisiz: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Sale failed: {str(e)}")
 
 
 async def _get_current_asset_price(asset_id: str, asset_type: str) -> Optional[float]:

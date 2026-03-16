@@ -13,6 +13,7 @@ export default function InvestmentsPage() {
     // Modal state
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [modalAction, setModalAction] = useState(null); // 'buy' or 'sell'
+    const [searchTerm, setSearchTerm] = useState("");
 
     const fetchMarketData = async () => {
         setLoading(true);
@@ -42,7 +43,7 @@ export default function InvestmentsPage() {
             }
         } catch (error) {
             console.error("Market data fetch failed", error);
-            toast.error("Piyasa verileri yüklenemiyor.");
+            toast.error("Unable to load market data.");
         } finally {
             setLoading(false);
         }
@@ -58,22 +59,32 @@ export default function InvestmentsPage() {
         return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
     };
 
+    const filteredCryptoData = cryptoData.filter(asset => 
+        asset.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        asset.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const filteredStockData = stockData.filter(asset => 
+        asset.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        asset.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
         <div className="mx-auto max-w-5xl space-y-6">
             {/* Header */}
             <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                    <h1 className="font-display text-2xl font-bold text-[var(--text-primary)]">Yatırım Piyasaları</h1>
-                    <p className="text-sm text-[var(--text-secondary)]">Kripto para ve global hisse senedi al-sat işlemleri</p>
+                    <h1 className="font-display text-2xl font-bold text-[var(--text-primary)]">Investment Markets</h1>
+                    <p className="text-sm text-[var(--text-secondary)]">Buy and sell cryptocurrency and global stocks</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button onClick={fetchMarketData} disabled={loading} className="bank-secondary-btn" aria-label="Yenile">
+                    <button onClick={fetchMarketData} disabled={loading} className="bank-secondary-btn" aria-label="Refresh">
                         <RefreshCcw size={16} className={loading ? "animate-spin" : ""} />
-                        <span>Yenile</span>
+                        <span>Refresh</span>
                     </button>
                     <button className="bank-primary-btn">
                         <ArrowLeftRight size={16} />
-                        <span>Al / Sat</span>
+                        <span>Buy / Sell</span>
                     </button>
                 </div>
             </header>
@@ -81,9 +92,9 @@ export default function InvestmentsPage() {
             {/* Tabs */}
             <div className="flex items-center gap-2 rounded-[1.2rem] border border-white/10 bg-white/5 p-1">
                 {[
-                    { id: "crypto", label: "Kripto Paralar" },
-                    { id: "stocks", label: "Hisse Senetleri" },
-                    { id: "portfolio", label: "Portföyüm" },
+                    { id: "crypto", label: "Cryptocurrencies" },
+                    { id: "stocks", label: "Stocks" },
+                    { id: "portfolio", label: "My Portfolio" },
                 ].map((tab) => (
                     <button
                         key={tab.id}
@@ -99,6 +110,21 @@ export default function InvestmentsPage() {
                 ))}
             </div>
 
+            {activeTab !== "portfolio" && (
+                <div className="relative">
+                    <input
+                        type="text"
+                        placeholder={`Search ${activeTab === 'crypto' ? 'cryptos' : 'stocks'}...`}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-12 pr-4 text-sm text-[var(--text-primary)] focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50 transition shadow-lg"
+                    />
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
+                        <TrendingUp size={18} />
+                    </div>
+                </div>
+            )}
+
             {/* Content Body */}
             <div className="rounded-[1.5rem] border border-white/10 bg-[#0A0D18] p-4 shadow-xl sm:p-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
@@ -109,18 +135,18 @@ export default function InvestmentsPage() {
                     </div>
                 ) : activeTab === "crypto" ? (
                     <div className="space-y-4">
-                        <MarketList data={cryptoData} formatMoney={formatMoney} onAction={(asset, action) => { setSelectedAsset(asset); setModalAction(action); }} />
+                        <MarketList data={filteredCryptoData} formatMoney={formatMoney} onAction={(asset, action) => { setSelectedAsset(asset); setModalAction(action); }} />
                     </div>
                 ) : activeTab === "stocks" ? (
                     <div className="space-y-4">
-                        <MarketList data={stockData} formatMoney={formatMoney} onAction={(asset, action) => { setSelectedAsset(asset); setModalAction(action); }} />
+                        <MarketList data={filteredStockData} formatMoney={formatMoney} onAction={(asset, action) => { setSelectedAsset(asset); setModalAction(action); }} />
                     </div>
                 ) : (
                     <div className="space-y-4">
                         {portfolio.length === 0 ? (
                             <div className="py-12 text-center text-[var(--text-secondary)]">
                                 <HandCoins size={48} className="mx-auto mb-4 opacity-50" />
-                                <p>Henüz portföyünüzde varlık bulunmuyor.</p>
+                                <p>You don't have any assets in your portfolio yet.</p>
                             </div>
                         ) : (
                             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -145,20 +171,20 @@ export default function InvestmentsPage() {
                                                 </div>
                                                 <div className="flex items-baseline gap-2 mb-4">
                                                     <span className="text-2xl font-bold text-[var(--text-primary)]">{item.quantity}</span>
-                                                    <span className="text-sm text-[var(--text-secondary)]">Adet</span>
+                                                    <span className="text-sm text-[var(--text-secondary)]">Units</span>
                                                 </div>
                                                 
                                                 <div className="space-y-1 mb-4 border-t border-white/5 pt-3">
                                                     <div className="text-sm flex justify-between">
-                                                        <span className="text-[var(--text-secondary)]">Güncel Fiyat:</span>
+                                                        <span className="text-[var(--text-secondary)]">Current Price:</span>
                                                         <span className="text-white font-medium">{formatMoney(currentPrice)}</span>
                                                     </div>
                                                     <div className="text-sm flex justify-between">
-                                                        <span className="text-[var(--text-secondary)]">Ort. Maliyet:</span>
+                                                        <span className="text-[var(--text-secondary)]">Avg. Cost:</span>
                                                         <span className="text-white font-medium">{formatMoney(item.average_buy_price)}</span>
                                                     </div>
                                                     <div className="text-sm flex justify-between">
-                                                        <span className="text-[var(--text-secondary)]">Toplam Değer:</span>
+                                                        <span className="text-[var(--text-secondary)]">Total Value:</span>
                                                         <span className="text-white font-bold">{formatMoney(currentValue)}</span>
                                                     </div>
                                                 </div>
@@ -168,13 +194,13 @@ export default function InvestmentsPage() {
                                                     onClick={() => { setSelectedAsset({ ...item, current_price: currentPrice, type: item.asset_type, name: item.symbol }); setModalAction('buy'); }} 
                                                     className="rounded-xl bg-emerald-500/10 py-2 text-sm font-semibold text-emerald-500 hover:bg-emerald-500 hover:text-white transition"
                                                 >
-                                                    Al
+                                                    Buy
                                                 </button>
                                                 <button 
                                                     onClick={() => { setSelectedAsset({ ...item, current_price: currentPrice, type: item.asset_type, name: item.symbol }); setModalAction('sell'); }} 
                                                     className="rounded-xl bg-rose-500/10 py-2 text-sm font-semibold text-rose-500 hover:bg-rose-500 hover:text-white transition"
                                                 >
-                                                    Sat
+                                                    Sell
                                                 </button>
                                             </div>
                                         </div>
@@ -191,8 +217,8 @@ export default function InvestmentsPage() {
                     <HelpCircle size={20} />
                 </div>
                 <div>
-                    <h3 className="font-semibold text-[var(--text-primary)]">Komisyon Ücretleri</h3>
-                    <p className="text-sm text-[var(--text-secondary)] mt-1">Yapacağınız her alış ve satış işleminde tutar üzerinden <span className="font-bold text-primary">%1.5 komisyon</span> kesilmektedir. Bu komisyon anında onay formunda gösterilir ve hesaptan düşülür.</p>
+                    <h3 className="font-semibold text-[var(--text-primary)]">Commission Fees</h3>
+                    <p className="text-sm text-[var(--text-secondary)] mt-1">A <span className="font-bold text-primary">1.5% commission</span> is applied to every buy and sell transaction. This fee is clearly shown on the confirmation form and deducted during the process.</p>
                 </div>
             </div>
 
@@ -212,7 +238,7 @@ export default function InvestmentsPage() {
 
 function MarketList({ data, formatMoney, onAction }) {
     if (!data || data.length === 0) {
-        return <div className="text-center py-8 text-[var(--text-secondary)]">Veri bulunamadı.</div>;
+        return <div className="text-center py-8 text-[var(--text-secondary)]">No data found.</div>;
     }
 
     return (
@@ -220,10 +246,10 @@ function MarketList({ data, formatMoney, onAction }) {
             <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead>
                     <tr className="border-b border-white/5 text-[var(--text-secondary)]">
-                        <th className="pb-3 pl-4 font-medium">Varlık</th>
-                        <th className="pb-3 font-medium">Fiyat (USD)</th>
-                        <th className="pb-3 font-medium text-right">24s Değişim</th>
-                        <th className="pb-3 pr-4 font-medium text-right">İşlem</th>
+                        <th className="pb-3 pl-4 font-medium">Asset</th>
+                        <th className="pb-3 font-medium">Price (USD)</th>
+                        <th className="pb-3 font-medium text-right">24h Change</th>
+                        <th className="pb-3 pr-4 font-medium text-right">Action</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -257,10 +283,10 @@ function MarketList({ data, formatMoney, onAction }) {
                                 </td>
                                 <td className="py-4 pr-4 text-right flex justify-end gap-2">
                                     <button onClick={() => onAction(item, 'buy')} className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 font-semibold text-emerald-500 transition hover:bg-emerald-500 hover:text-white">
-                                        Al
+                                        Buy
                                     </button>
                                     <button onClick={() => onAction(item, 'sell')} className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-1.5 font-semibold text-rose-500 transition hover:bg-rose-500 hover:text-white">
-                                        Sat
+                                        Sell
                                     </button>
                                 </td>
                             </tr>
@@ -285,8 +311,8 @@ function TradeModal({ asset, action, accounts, onClose, onSuccess, formatMoney }
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!parsedQuantity || parsedQuantity <= 0) return toast.error("Geçerli bir miktar girin.");
-        if (!accountId) return toast.error("Hesap seçmelisiniz.");
+        if (!parsedQuantity || parsedQuantity <= 0) return toast.error("Please enter a valid amount.");
+        if (!accountId) return toast.error("You must select an account.");
 
         setLoading(true);
         try {
@@ -305,9 +331,9 @@ function TradeModal({ asset, action, accounts, onClose, onSuccess, formatMoney }
             });
 
             const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || "İşlem başarısız.");
+            if (!res.ok) throw new Error(data.detail || "Transaction failed.");
             
-            toast.success(data.message || "İşlem başarıyla gerçekleşti.");
+            toast.success(data.message || "Transaction completed successfully.");
             onSuccess();
         } catch (error) {
             toast.error(error.message);
@@ -329,14 +355,14 @@ function TradeModal({ asset, action, accounts, onClose, onSuccess, formatMoney }
                         {asset.symbol.substring(0, 2)}
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold text-white">{isBuy ? "Satın Al" : "Sat"}: {asset.name}</h2>
-                        <p className="text-sm text-[var(--text-secondary)]">Güncel Fiyat: <span className="text-white font-medium">{formatMoney(asset.current_price)}</span></p>
+                        <h2 className="text-xl font-bold text-white">{isBuy ? "Confirm Purchase" : "Confirm Sale"}: {asset.name}</h2>
+                        <p className="text-sm text-[var(--text-secondary)]">Current Price: <span className="text-white font-medium">{formatMoney(asset.current_price)}</span></p>
                     </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div>
-                        <label className="bank-label">İşlem Yapılacak Hesap</label>
+                        <label className="bank-label">Source Account</label>
                         <select
                             className="bank-input"
                             value={accountId}
@@ -352,13 +378,13 @@ function TradeModal({ asset, action, accounts, onClose, onSuccess, formatMoney }
                     </div>
 
                     <div>
-                        <label className="bank-label">Adet</label>
+                        <label className="bank-label">Quantity</label>
                         <input
                             type="number"
                             step="any"
                             min="0.000001"
                             className="bank-input"
-                            placeholder="Örn: 0.5 veya 10"
+                            placeholder="e.g.: 0.5 or 10"
                             value={quantity}
                             onChange={(e) => setQuantity(e.target.value)}
                             required
@@ -367,22 +393,22 @@ function TradeModal({ asset, action, accounts, onClose, onSuccess, formatMoney }
 
                     <div className="rounded-2xl border border-white/5 bg-white/5 p-4 space-y-2 text-sm">
                         <div className="flex justify-between text-[var(--text-secondary)]">
-                            <span>Varlık Değeri</span>
+                            <span>Asset Value</span>
                             <span className="text-white font-medium">{formatMoney(totalValue)}</span>
                         </div>
                         <div className="flex justify-between text-[var(--text-secondary)]">
-                            <span>Komisyon (%1.5)</span>
+                            <span>Commission (1.5%)</span>
                             <span className="text-primary font-medium">{formatMoney(commission)}</span>
                         </div>
                         <div className="my-2 border-t border-white/10" />
                         <div className="flex justify-between font-bold">
-                            <span className="text-white">{isBuy ? "Toplam Ödenecek" : "Hesaba Geçecek"}</span>
+                            <span className="text-white">{isBuy ? "Total Amount" : "Received Amount"}</span>
                             <span className={isBuy ? "text-rose-400" : "text-emerald-400"}>{formatMoney(totalCost)}</span>
                         </div>
                     </div>
 
                     <p className="text-xs text-[var(--text-secondary)] italic text-center">
-                        Bu işlem anlık piyasa fiyatı üzerinden gerçekleştirilecektir ve geri alınamaz.
+                        This transaction will be executed at current market prices and cannot be reversed.
                     </p>
 
                     <button
@@ -397,7 +423,7 @@ function TradeModal({ asset, action, accounts, onClose, onSuccess, formatMoney }
                         {loading ? (
                             <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-r-transparent" />
                         ) : (
-                            isBuy ? "Satın Alımı Onayla" : "Satış İşlemini Onayla"
+                            isBuy ? "Confirm Buy Order" : "Confirm Sell Order"
                         )}
                     </button>
                 </form>

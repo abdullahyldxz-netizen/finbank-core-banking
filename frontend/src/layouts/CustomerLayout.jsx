@@ -28,21 +28,21 @@ import { useAuth } from "../context/AuthContext";
 const primaryLinks = [
     { to: "/customer/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/customer/transfer", label: "Transfer", icon: ArrowLeftRight },
-    { to: "/customer/investments", label: "Yatırım", icon: TrendingUp },
+    { to: "/customer/investments", label: "Investments", icon: TrendingUp },
     { to: "/customer/cards", label: "Cards", icon: CreditCard },
     { to: "/customer/history", label: "History", icon: History },
     { to: "/customer/profile", label: "Profile", icon: UserRound },
 ];
 
 const drawerLinks = [
-    { to: "/customer/accounts", label: "Hesaplar", icon: Wallet },
-    { to: "/customer/easy-address", label: "Kolay Adres", icon: BookOpen },
-    { to: "/customer/payment-requests", label: "Para iste", icon: HandCoins },
-    { to: "/customer/qr", label: "QR islemleri", icon: QrCode },
-    { to: "/customer/messages", label: "Mesajlar", icon: MessageSquare },
-    { to: "/customer/security", label: "Guvenlik", icon: Shield },
+    { to: "/customer/accounts", label: "Accounts", icon: Wallet },
+    { to: "/customer/easy-address", label: "Easy Address", icon: BookOpen },
+    { to: "/customer/payment-requests", label: "Request Funds", icon: HandCoins },
+    { to: "/customer/qr", label: "QR Transactions", icon: QrCode },
+    { to: "/customer/messages", label: "Messages", icon: MessageSquare },
+    { to: "/customer/security", label: "Security", icon: Shield },
     { to: "/customer/kyc", label: "KYC", icon: FileCheck },
-    { to: "/customer/contact", label: "Iletisim", icon: Headphones },
+    { to: "/customer/contact", label: "Support", icon: Headphones },
 ];
 
 export default function CustomerLayout() {
@@ -79,7 +79,7 @@ export default function CustomerLayout() {
                             type="button"
                             onClick={() => setDrawerOpen(true)}
                             className="bank-icon-button lg:hidden"
-                            aria-label="Menüyü aç"
+                            aria-label="Open menu"
                         >
                             <Menu size={20} />
                         </button>
@@ -113,8 +113,8 @@ export default function CustomerLayout() {
                             <Menu size={16} />
                             Services
                         </button>
-                        <NotificationBell />
-                        <button type="button" onClick={toggleTheme} className="bank-icon-button" aria-label="Tema değiştir">
+                         <NotificationBell />
+                        <button type="button" onClick={toggleTheme} className="bank-icon-button" aria-label="Change theme">
                             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
                         </button>
                         <div className="bank-user-pill hidden sm:flex">
@@ -128,7 +128,7 @@ export default function CustomerLayout() {
                         </div>
                         <button type="button" onClick={logout} className="bank-secondary-btn hidden xl:inline-flex !min-h-[2.7rem] !px-4">
                             <LogOut size={16} />
-                            Cikis
+                            Log Out
                         </button>
                     </div>
                 </div>
@@ -140,8 +140,8 @@ export default function CustomerLayout() {
             />
 
             <aside
-                className={`fixed inset-y-0 left-0 z-[70] w-[22rem] max-w-[calc(100vw-1.5rem)] border-r border-white/10 bg-[#060913]/95 px-5 py-5 shadow-2xl backdrop-blur-2xl transition duration-300 ${drawerOpen ? "translate-x-0" : "-translate-x-full"}`}
-                aria-label="Müşteri menüsü"
+                className={`fixed inset-y-0 left-0 z-[70] w-[22rem] max-w-[calc(100vw-1.5rem)] border-r border-white/10 bg-[#060913]/95 px-5 py-5 shadow-2xl backdrop-blur-2xl transition duration-300 overflow-y-auto ${drawerOpen ? "translate-x-0" : "-translate-x-full"}`}
+                aria-label="Customer menu"
             >
                 <div className="mb-6 flex items-center justify-between">
                     <Link to="/customer/dashboard" className="bank-brand" onClick={() => setDrawerOpen(false)}>
@@ -150,7 +150,7 @@ export default function CustomerLayout() {
                         </span>
                         <span className="bank-brand-text">FinBank</span>
                     </Link>
-                    <button type="button" className="bank-icon-button" onClick={() => setDrawerOpen(false)} aria-label="Menüyü kapat">
+                    <button type="button" className="bank-icon-button" onClick={() => setDrawerOpen(false)} aria-label="Close menu">
                         <X size={18} />
                     </button>
                 </div>
@@ -192,11 +192,11 @@ export default function CustomerLayout() {
                     <p className="bank-section-label">Session</p>
                     <button type="button" onClick={toggleTheme} className="bank-secondary-btn w-full justify-start !min-h-[3rem] !rounded-2xl !px-4">
                         {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-                        {theme === "dark" ? "Acik tema" : "Koyu tema"}
+                        {theme === "dark" ? "Light Mode" : "Dark Mode"}
                     </button>
                     <button type="button" onClick={logout} className="bank-secondary-btn w-full justify-start !min-h-[3rem] !rounded-2xl !px-4">
                         <LogOut size={16} />
-                        Guvenli cikis
+                        Secure Logout
                     </button>
                 </div>
             </aside>

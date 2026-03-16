@@ -4,8 +4,8 @@ import toast from "react-hot-toast";
 import { accountApi } from "../services/api";
 
 const ACCOUNT_TYPE_LABELS = {
-    checking: "Vadesiz hesap",
-    savings: "Tasarruf hesabi",
+    checking: "Checking account",
+    savings: "Savings account",
 };
 
 const CURRENCY_COLORS = {
@@ -32,7 +32,7 @@ export default function AccountsPage() {
             const res = await accountApi.listMine();
             setAccounts(Array.isArray(res.data) ? res.data : []);
         } catch (error) {
-            toast.error("Hesaplar yuklenemedi.");
+            toast.error("Unable to load accounts.");
             setAccounts([]);
         } finally {
             setLoading(false);
@@ -43,11 +43,11 @@ export default function AccountsPage() {
         event.preventDefault();
         try {
             await accountApi.create(newAccount);
-            toast.success("Yeni hesap olusturuldu.");
+            toast.success("New account has been created.");
             setShowModal(false);
             await loadAccounts();
         } catch (error) {
-            toast.error(error.response?.data?.detail || "Hesap acilamadi.");
+            toast.error(error.response?.data?.detail || "Account creation failed.");
         }
     };
 
@@ -55,10 +55,10 @@ export default function AccountsPage() {
         try {
             await navigator.clipboard.writeText(value);
             setCopiedValue(value);
-            toast.success(`${label} kopyalandi.`);
+            toast.success(`${label} copied.`);
             setTimeout(() => setCopiedValue(""), 1800);
         } catch {
-            toast.error("Kopyalama basarisiz.");
+            toast.error("Copy failed.");
         }
     };
 
@@ -74,20 +74,20 @@ export default function AccountsPage() {
         <div style={{ paddingBottom: 72 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 28, flexWrap: "wrap" }}>
                 <div>
-                    <h1 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -1, margin: 0 }}>Hesaplarim</h1>
+                    <h1 style={{ fontSize: 34, fontWeight: 900, letterSpacing: -1, margin: 0 }}>My Accounts</h1>
                     <p style={{ margin: "8px 0 0", color: "var(--text-secondary)" }}>
-                        IBAN, hesap numarasi ve bakiye bilgilerinizi tek ekranda yonetin.
+                        Manage your IBAN, account number, and balance information on a single screen.
                     </p>
                 </div>
                 <button className="btn btn-primary" onClick={() => setShowModal(true)} style={{ borderRadius: "var(--radius-full)", padding: "14px 24px", fontSize: 16, fontWeight: 800 }}>
-                    <Plus size={20} style={{ marginRight: 8 }} /> Yeni hesap ac
+                    <Plus size={20} style={{ marginRight: 8 }} /> Open new account
                 </button>
             </div>
 
             {accounts.length === 0 ? (
                 <div className="empty-state">
                     <Landmark size={52} style={{ opacity: 0.32 }} />
-                    <p style={{ marginTop: 12 }}>Henuz hesabiniz yok. Yeni hesap olusturarak para transferine baslayabilirsiniz.</p>
+                    <p style={{ marginTop: 12 }}>You don't have any accounts yet. You can start transferring money by creating a new account.</p>
                 </div>
             ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24 }}>
@@ -116,22 +116,22 @@ export default function AccountsPage() {
                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                                         <div>
                                             <div style={{ fontSize: 12, opacity: 0.78, marginBottom: 4, textTransform: "uppercase", letterSpacing: 1.2 }}>
-                                                {ACCOUNT_TYPE_LABELS[account.account_type] || "Banka hesabi"}
+                                                {ACCOUNT_TYPE_LABELS[account.account_type] || "Bank account"}
                                             </div>
                                             <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: -0.8 }}>
-                                                {balance.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {account.currency}
+                                                {balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {account.currency}
                                             </div>
                                         </div>
                                         <div style={{ textAlign: "right" }}>
-                                            <div style={{ fontSize: 12, opacity: 0.72 }}>Durum</div>
+                                            <div style={{ fontSize: 12, opacity: 0.72 }}>Status</div>
                                             <div style={{ fontWeight: 700, fontSize: 13 }}>
-                                                {account.status === "active" ? "Aktif" : account.status === "frozen" ? "Donduruldu" : "Pasif"}
+                                                {account.status === "active" ? "Active" : account.status === "frozen" ? "Frozen" : "Passive"}
                                             </div>
                                         </div>
                                     </div>
 
                                     <div style={{ marginTop: 32, marginBottom: 24 }}>
-                                        <div style={{ fontSize: 11, opacity: 0.74, textTransform: "uppercase", letterSpacing: 1.2 }}>Hesap numarasi</div>
+                                        <div style={{ fontSize: 11, opacity: 0.74, textTransform: "uppercase", letterSpacing: 1.2 }}>Account number</div>
                                         <div style={{ fontFamily: "monospace", fontSize: 22, letterSpacing: 3, fontWeight: 700, marginTop: 8 }}>
                                             {formatAccountNumber(account.account_number)}
                                         </div>
@@ -144,25 +144,25 @@ export default function AccountsPage() {
                                             action={
                                                 <button type="button" onClick={() => toggleIban(accountId)} style={ghostButtonStyle}>
                                                     {visibleIban[accountId] ? <EyeOff size={14} /> : <Eye size={14} />}
-                                                    {visibleIban[accountId] ? "Gizle" : "Goster"}
+                                                    {visibleIban[accountId] ? "Hide" : "Show"}
                                                 </button>
                                             }
                                         />
                                         <DetailRow
-                                            label="Kopyala"
+                                            label="Copy"
                                             value={
                                                 copiedValue === account.iban ? (
-                                                    "IBAN kopyalandi"
+                                                    "IBAN copied"
                                                 ) : copiedValue === account.account_number ? (
-                                                    "Hesap no kopyalandi"
+                                                    "Account no copied"
                                                 ) : (
                                                     account.iban ? `${account.iban.slice(0, 8)} •••• ${account.iban.slice(-4)}` : (account.account_number || "")
                                                 )
                                             }
                                             action={
                                                 <div style={{ display: "flex", gap: 8 }}>
-                                                    <button type="button" onClick={() => handleCopy(account.account_number, "Hesap numarasi")} style={ghostButtonStyle}>
-                                                        <Copy size={14} /> Hesap no
+                                                    <button type="button" onClick={() => handleCopy(account.account_number, "Account number")} style={ghostButtonStyle}>
+                                                        <Copy size={14} /> Account no
                                                     </button>
                                                     <button type="button" onClick={() => handleCopy(account.iban, "IBAN")} style={ghostButtonStyle}>
                                                         {copiedValue === account.iban ? <CheckCircle2 size={14} /> : <Copy size={14} />} IBAN
@@ -182,23 +182,23 @@ export default function AccountsPage() {
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
                     <div className="modal" onClick={(event) => event.stopPropagation()}>
                         <div className="modal-header">
-                            <h3>Yeni hesap ac</h3>
+                            <h3>Open new account</h3>
                             <button className="modal-close" onClick={() => setShowModal(false)}>X</button>
                         </div>
                         <form onSubmit={handleCreate}>
                             <div className="form-group">
-                                <label className="form-label">Hesap tipi</label>
+                                <label className="form-label">Account type</label>
                                 <select
                                     className="form-select"
                                     value={newAccount.account_type}
                                     onChange={(event) => setNewAccount((prev) => ({ ...prev, account_type: event.target.value }))}
                                 >
-                                    <option value="checking">Vadesiz hesap</option>
-                                    <option value="savings">Tasarruf hesabi</option>
+                                    <option value="checking">Checking account</option>
+                                    <option value="savings">Savings account</option>
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Para birimi</label>
+                                <label className="form-label">Currency</label>
                                 <select
                                     className="form-select"
                                     value={newAccount.currency}
@@ -211,10 +211,10 @@ export default function AccountsPage() {
                             </div>
                             <div className="modal-footer">
                                 <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>
-                                    Vazgec
+                                    Cancel
                                 </button>
                                 <button type="submit" className="btn btn-primary">
-                                    Hesap ac
+                                    Open account
                                 </button>
                             </div>
                         </form>

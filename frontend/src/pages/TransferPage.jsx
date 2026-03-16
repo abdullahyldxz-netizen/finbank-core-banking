@@ -27,23 +27,23 @@ import {
 const tabConfig = {
     transfer: {
         label: "Transfer",
-        title: "Para Transferi",
-        description: "IBAN, hesap numarası veya kolay adres ile anında gönderim.",
-        button: "Gönder",
+        title: "Money Transfer",
+        description: "Instant transfer with IBAN, account number or easy address.",
+        button: "Send",
         tone: "primary",
     },
     deposit: {
-        label: "Para Yatır",
-        title: "Hesaba Para Yatır",
-        description: "Seçili hesaba güvenli yatırım işlemi oluştur.",
-        button: "Yatırımı Başlat",
+        label: "Deposit",
+        title: "Deposit Money",
+        description: "Create a secure deposit transaction for the selected account.",
+        button: "Start Deposit",
         tone: "success",
     },
     withdraw: {
-        label: "Para Çek",
-        title: "Hesaptan Para Çek",
-        description: "Operasyon kaydı oluşturarak çekim talebi gönder.",
-        button: "Çekim Talebi Oluştur",
+        label: "Withdraw",
+        title: "Withdraw Money",
+        description: "Send a withdrawal request by creating an operation record.",
+        button: "Create Withdrawal Request",
         tone: "warning",
     },
 };
@@ -86,7 +86,7 @@ export default function TransferPage() {
                     nextAccounts.push({
                         id: card.id || card.card_id,
                         account_id: card.id || card.card_id,
-                        account_name: card.card_name || "Kredi Kartı",
+                        account_name: card.card_name || "Credit Card",
                         account_number: card.card_number,
                         balance: card.available_limit,
                         account_type: "credit",
@@ -108,7 +108,7 @@ export default function TransferPage() {
                 setAccountId(nextAccounts[0].id || nextAccounts[0].account_id);
             }
         } catch {
-            toast.error("Transfer verileri yüklenemedi.");
+            toast.error("Unable to load transfer data.");
         } finally {
             setBootLoading(false);
         }
@@ -140,12 +140,12 @@ export default function TransferPage() {
         // 1. Credit Card Cash Advance Fee
         if (selectedAccount.account_type === "credit") {
             fee = (parsedAmount * 0.025) + 15.0;
-            message = "Nakit Avans İşlem Ücreti";
+            message = "Cash Advance Processing Fee";
         } 
         // 2. EFT Fee (External transfer)
         else if (target && !target.toUpperCase().startsWith("TRF") && target.toUpperCase().startsWith("TR")) {
             fee = 5.0;
-            message = "Banka Dışı Transfer (EFT) Ücreti";
+            message = "External Transfer (EFT) Fee";
         }
 
         if (fee > 0) {
@@ -158,7 +158,7 @@ export default function TransferPage() {
     const handleSubmit = async (event) => {
         event.preventDefault();
         if (!amount || Number(amount) <= 0) {
-            toast.error("Geçerli bir tutar gir.");
+            toast.error("Enter a valid amount.");
             return;
         }
 
@@ -166,7 +166,7 @@ export default function TransferPage() {
         try {
             if (activeTab === "transfer") {
                 if (!target.trim()) {
-                    toast.error("Alıcı bilgisi gerekli.");
+                    toast.error("Recipient information is required.");
                     setLoading(false);
                     return;
                 }
@@ -180,7 +180,7 @@ export default function TransferPage() {
                 setReceipt({
                     type: "Transfer",
                     amount: Number(amount),
-                    date: new Date().toLocaleString("tr-TR"),
+                    date: new Date().toLocaleString("en-US"),
                     target: normalizedTarget,
                     description,
                     reference: `FIN-${Date.now().toString(36).toUpperCase()}`,
@@ -190,10 +190,10 @@ export default function TransferPage() {
             if (activeTab === "deposit") {
                 await transactionApi.deposit({ account_id: accountId, amount: Number(amount), description });
                 setReceipt({
-                    type: "Para Yatırma",
+                    type: "Deposit",
                     amount: Number(amount),
-                    date: new Date().toLocaleString("tr-TR"),
-                    target: selectedAccount?.account_name || "Seçili hesap",
+                    date: new Date().toLocaleString("en-US"),
+                    target: selectedAccount?.account_name || "Selected account",
                     description,
                     reference: `DEP-${Date.now().toString(36).toUpperCase()}`,
                 });
@@ -202,10 +202,10 @@ export default function TransferPage() {
             if (activeTab === "withdraw") {
                 await transactionApi.withdraw({ account_id: accountId, amount: Number(amount), description });
                 setReceipt({
-                    type: "Para Çekme",
+                    type: "Withdrawal",
                     amount: Number(amount),
-                    date: new Date().toLocaleString("tr-TR"),
-                    target: selectedAccount?.account_name || "Seçili hesap",
+                    date: new Date().toLocaleString("en-US"),
+                    target: selectedAccount?.account_name || "Selected account",
                     description,
                     reference: `WTH-${Date.now().toString(36).toUpperCase()}`,
                 });
@@ -216,13 +216,13 @@ export default function TransferPage() {
             setDescription("");
             loadData();
         } catch (error) {
-            toast.error(error.response?.data?.detail || "İşlem başarısız.");
+            toast.error(error.response?.data?.detail || "Transaction failed.");
         } finally {
             setLoading(false);
         }
     };
 
-    const formatCurrency = (value) => new Intl.NumberFormat("tr-TR", {
+    const formatCurrency = (value) => new Intl.NumberFormat("en-US", {
         style: "currency",
         currency: "TRY",
         minimumFractionDigits: 2,
@@ -240,18 +240,18 @@ export default function TransferPage() {
         return (
             <div className="mx-auto max-w-2xl space-y-6">
                 <BankPageHeader
-                    eyebrow="İşlem Özeti"
-                    title="Başarılı Banka İşlemi"
-                    description="Referans kodunu saklayabilir veya yeni bir hareket başlatabilirsin."
+                    eyebrow="Transaction Summary"
+                    title="Successful Bank Transaction"
+                    description="You can save the reference code or start a new transaction."
                     actions={
                         <div className="flex flex-wrap items-center gap-3">
-                            <button type="button" onClick={() => navigator.clipboard?.writeText(receipt.reference).then(() => toast.success("Referans kopyalandı."))} className="bank-secondary-btn">
+                            <button type="button" onClick={() => navigator.clipboard?.writeText(receipt.reference).then(() => toast.success("Reference copied."))} className="bank-secondary-btn">
                                 <Copy size={16} />
-                                Referansı Kopyala
+                                Copy Reference
                             </button>
                             <button type="button" onClick={() => setReceipt(null)} className="bank-primary-btn">
                                 <Send size={16} />
-                                Yeni İşlem
+                                New Transaction
                             </button>
                         </div>
                     }
@@ -265,13 +265,13 @@ export default function TransferPage() {
                     <h2 className="font-display text-5xl font-black tracking-[-0.07em] text-white">{formatCurrency(receipt.amount)}</h2>
                     <p className="mt-3 text-sm text-slate-300">{receipt.date}</p>
                     <div className="mt-8 grid gap-3 text-left sm:grid-cols-2">
-                        <BankListRow title="Hedef" description={receipt.target || "-"} />
-                        <BankListRow title="Referans" description={receipt.reference} />
-                        <BankListRow title="Açıklama" description={receipt.description || "Ek not girilmedi"} className="sm:col-span-2" />
+                        <BankListRow title="Target" description={receipt.target || "-"} />
+                        <BankListRow title="Reference" description={receipt.reference} />
+                        <BankListRow title="Description" description={receipt.description || "No description provided"} className="sm:col-span-2" />
                     </div>
                     <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-                        <Link to={`${rolePath}/dashboard`} className="bank-secondary-btn no-underline">Panele Dön</Link>
-                        <Link to={`${rolePath}/history`} className="bank-primary-btn no-underline">Geçmişi Gör</Link>
+                        <Link to={`${rolePath}/dashboard`} className="bank-secondary-btn no-underline">Back to Dashboard</Link>
+                        <Link to={`${rolePath}/history`} className="bank-primary-btn no-underline">View History</Link>
                     </div>
                 </BankGlassCard>
             </div>
@@ -288,17 +288,17 @@ export default function TransferPage() {
             />
 
             <div className="grid gap-6 xl:grid-cols-[1.18fr_0.82fr]">
-                <BankSectionCard title="İşlem Formu" description="Gönderen hesap, hedef ve tutar alanlarını doldur.">
+                <BankSectionCard title="Transaction Form" description="Fill in the sender account, target, and amount fields.">
                     <form onSubmit={handleSubmit} className="grid gap-5">
                         <label>
-                            <span className="form-label">Gönderen Hesap</span>
+                            <span className="form-label">Sender Account</span>
                             <select className="form-select" value={accountId} onChange={(event) => setAccountId(event.target.value)} required>
                                 {accounts.map((account) => {
                                     const id = account.id || account.account_id;
                                     const isCredit = account.account_type === "credit";
                                     return (
                                         <option key={id} value={id}>
-                                            {isCredit ? "💳 " : "🏦 "}{account.account_name || account.account_number || "Hesap"} - {formatCurrency(balances[id])}
+                                            {isCredit ? "💳 " : "🏦 "}{account.account_name || account.account_number || "Account"} - {formatCurrency(balances[id])}
                                         </option>
                                     );
                                 })}
@@ -307,12 +307,12 @@ export default function TransferPage() {
 
                         {activeTab === "transfer" ? (
                             <label>
-                                <span className="form-label">Alıcı Bilgisi</span>
+                                <span className="form-label">Recipient Information</span>
                                 <div className="relative">
                                     <input
                                         className="form-input"
                                         style={{ paddingRight: "3rem" }}
-                                        placeholder="IBAN, hesap ID veya kolay adres"
+                                        placeholder="IBAN, account ID or easy address"
                                         value={target}
                                         onChange={(event) => setTarget(event.target.value)}
                                         required
@@ -324,7 +324,7 @@ export default function TransferPage() {
 
                         <div className="grid gap-5 md:grid-cols-[1fr_auto] md:items-end">
                             <label>
-                                <span className="form-label">Tutar</span>
+                                <span className="form-label">Amount</span>
                                 <div className="relative">
                                     <span className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-2xl font-bold text-primary">₺</span>
                                     <input
@@ -342,17 +342,17 @@ export default function TransferPage() {
                             </label>
 
                             <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-5 py-4 md:min-w-[16rem]">
-                                <p className="bank-section-label mb-2 text-[11px]">Kullanılabilir</p>
+                                <p className="bank-section-label mb-2 text-[11px]">Available</p>
                                 <p className="text-xl font-bold text-white">{formatCurrency(balances[accountId] || 0)}</p>
-                                <p className="mt-1 text-sm text-[var(--text-secondary)]">{selectedAccount?.account_name || "Seçili hesap"}</p>
+                                <p className="mt-1 text-sm text-[var(--text-secondary)]">{selectedAccount?.account_name || "Selected account"}</p>
                             </div>
                         </div>
 
                         <label>
-                            <span className="form-label">Açıklama</span>
+                            <span className="form-label">Description</span>
                             <input
                                 className="form-input"
-                                placeholder="Örn. kira, ödeme, avans"
+                                placeholder="e.g. rent, payment, advance"
                                 value={description}
                                 onChange={(event) => setDescription(event.target.value)}
                             />
@@ -364,59 +364,59 @@ export default function TransferPage() {
                                     <ArrowUpRight size={18} className="mt-0.5 text-amber-500" />
                                     <div>
                                         <h4 className="font-semibold text-amber-500">{commissionWarning.message}</h4>
-                                        <p className="mt-1 text-sm text-amber-500/80">Bu işlem için bakiyenizden ekstra <strong>{formatCurrency(commissionWarning.fee)}</strong> komisyon tahsil edilecektir.</p>
+                                        <p className="mt-1 text-sm text-amber-500/80">An extra <strong>{formatCurrency(commissionWarning.fee)}</strong> commission will be charged from your balance for this transaction.</p>
                                     </div>
                                 </div>
                             </div>
                         )}
 
                         <button type="submit" disabled={loading} className="bank-primary-btn w-full justify-center !min-h-[3.7rem]">
-                            {loading ? "İşleniyor..." : activeConfig.button}
+                            {loading ? "Processing..." : activeConfig.button}
                         </button>
                     </form>
                 </BankSectionCard>
 
                 <div className="space-y-6">
                     <BankGlassCard className="rounded-[2rem] bg-[linear-gradient(135deg,rgba(8,15,32,0.94),rgba(18,29,58,0.86))]">
-                        <p className="bank-section-label mb-3 text-[11px]">Transfer Özeti</p>
+                        <p className="bank-section-label mb-3 text-[11px]">Transfer Summary</p>
                         <h3 className="font-display text-4xl font-black tracking-[-0.06em] text-white">{formatCurrency(balances[accountId] || 0)}</h3>
-                        <p className="mt-3 text-sm leading-6 text-slate-300">Seçili hesap bakiyesi üzerinden işlemini doğrula ve işlem tipine göre uygun akışı başlat.</p>
+                        <p className="mt-3 text-sm leading-6 text-slate-300">Verify your transaction via the selected account balance and start the appropriate flow based on the transaction type.</p>
                         <div className="mt-6 grid gap-3">
                             <BankListRow
                                 leading={<span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/14 text-primary"><Wallet size={18} /></span>}
-                                title={selectedAccount?.account_name || "Seçili hesap yok"}
-                                description={selectedAccount?.iban || selectedAccount?.account_number || "Aktif kaynak hesap"}
+                                title={selectedAccount?.account_name || "No account selected"}
+                                description={selectedAccount?.iban || selectedAccount?.account_number || "Active source account"}
                             />
                             <BankListRow
                                 leading={<span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/14 text-emerald-400"><BadgeCheck size={18} /></span>}
-                                title="Güvenli Bankacılık"
-                                description="Her işlem çok katmanlı doğrulama ve log kayıtları ile korunur."
+                                title="Secure Banking"
+                                description="Every transaction is protected by multi-layer verification and audit logs."
                             />
                         </div>
                     </BankGlassCard>
 
                     {activeTab === "transfer" ? (
-                        <BankSectionCard title="Hızlı Kişiler" description="Sık kullanılan adreslerden birini seçip formu otomatik doldur.">
+                        <BankSectionCard title="Quick Contacts" description="Select one of the frequently used addresses to auto-fill the form.">
                             <div className="space-y-3">
                                 {easyAddresses.length === 0 ? (
-                                    <BankEmptyState icon={Landmark} title="Kayıtlı kolay adres yok" description="Kolay adres eklediğinde burada hızlı gönderim kartları görünür." className="py-8" />
+                                    <BankEmptyState icon={Landmark} title="No registered easy addresses" description="Quick transfer cards will appear here when you add an easy address." className="py-8" />
                                 ) : easyAddresses.map((address, index) => (
                                     <BankListRow
                                         key={address.id || index}
                                         leading={<span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-500/14 text-violet-400"><Send size={18} /></span>}
-                                        title={address.label || address.alias_type || "Kolay adres"}
+                                        title={address.label || address.alias_type || "Easy address"}
                                         description={address.alias_value}
-                                        trailing={<button type="button" onClick={() => setDemoTarget(address.alias_value)} className="text-sm font-bold text-primary">Seç</button>}
+                                        trailing={<button type="button" onClick={() => setDemoTarget(address.alias_value)} className="text-sm font-bold text-primary">Select</button>}
                                     />
                                 ))}
                             </div>
                         </BankSectionCard>
                     ) : (
-                        <BankSectionCard title="İşlem Notları" description="Yatırım ve çekim talepleri audit log akışına dahil edilir.">
+                        <BankSectionCard title="Transaction Notes" description="Investment and withdrawal requests are included in the audit log flow.">
                             <div className="space-y-3">
-                                <BankListRow leading={<span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/14 text-emerald-400"><ArrowDownLeft size={18} /></span>} title="Para Yatırma" description="Şube veya operasyon ekibi tarafından doğrulanır." />
-                                <BankListRow leading={<span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/14 text-amber-300"><ArrowUpRight size={18} /></span>} title="Para Çekme" description="İşlem sonrası müşteri hareketlerinde otomatik görünür." />
-                                <BankListRow leading={<span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/14 text-primary"><Sparkles size={18} /></span>} title="FinBank Akıllı Akış" description="İşlem referansı ve detayları otomatik oluşturulur." />
+                                <BankListRow leading={<span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/14 text-emerald-400"><ArrowDownLeft size={18} /></span>} title="Deposit" description="Verified by the branch or operation team." />
+                                <BankListRow leading={<span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/14 text-amber-300"><ArrowUpRight size={18} /></span>} title="Withdrawal" description="Automatically visible in customer movements after transaction." />
+                                <BankListRow leading={<span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/14 text-primary"><Sparkles size={18} /></span>} title="FinBank Smart Flow" description="Transaction reference and details are automatically created." />
                             </div>
                         </BankSectionCard>
                     )}
