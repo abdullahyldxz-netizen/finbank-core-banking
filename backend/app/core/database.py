@@ -34,8 +34,13 @@ async def connect_to_mongo():
     await _db.accounts.create_index("customer_id")
 
     # Ledger: composite unique for idempotency, index on account_id
+    try:
+        await _db.ledger_entries.drop_index("transaction_ref_1_account_id_1_type_1")
+    except Exception:
+        pass
+
     await _db.ledger_entries.create_index(
-        [("transaction_ref", 1), ("account_id", 1), ("type", 1)],
+        [("transaction_ref", 1), ("account_id", 1), ("type", 1), ("category", 1)],
         unique=True,
     )
     await _db.ledger_entries.create_index("account_id")
@@ -64,7 +69,8 @@ async def connect_to_mongo():
                         "category": {
                             "enum": [
                                 "DEPOSIT", "WITHDRAWAL",
-                                "TRANSFER_IN", "TRANSFER_OUT"
+                                "TRANSFER_IN", "TRANSFER_OUT",
+                                "COMMISSION"
                             ]
                         },
                         "amount": {"bsonType": ["decimal", "double", "int"]},

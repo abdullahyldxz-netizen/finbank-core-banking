@@ -24,10 +24,8 @@ def _generate_account_number() -> str:
 
 
 def _generate_iban(account_number: str) -> str:
-    """Generate a mock Turkish IBAN."""
-    bank_code = "0001"
-    branch_code = "0000"
-    return f"TR00{bank_code}{branch_code}{account_number}0000000000"
+    """Generate a mock FinBank IBAN (26 chars)."""
+    return f"FINB{random.randint(10,99)}000619{account_number.zfill(14)[:14]}"
 
 
 @router.post("/", response_model=AccountResponse, status_code=201)

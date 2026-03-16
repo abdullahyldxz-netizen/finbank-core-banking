@@ -3,6 +3,10 @@ FinBank - Transaction API Routes (Deposits, Withdrawals, Transfers)
 """
 from datetime import datetime, timezone
 from typing import List, Optional
+import websockets
+import httpx
+from app.core.banks import EXTERNAL_BANKS, MY_BANK_CODE
+from app.utils.iso20022 import generate_pacs008_xml, parse_pacs002_xml
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, Header, BackgroundTasks
 from app.core.database import get_database
 from app.core.security import get_current_user
@@ -230,6 +234,24 @@ async def transfer(
         to_account = await db.accounts.find_one({"iban": body.target_iban})
         if to_account:
             body.to_account_id = to_account["account_id"]
+        else:
+            iban = body.target_iban.strip().upper()
+            if len(iban) > 10 and (iban.startswith("TR") or iban.startswith("FINB")):
+                mapped_bank_code = None
+                if "DGBNK" in iban: mapped_bank_code = "DGBNK"
+                elif "TEST" in iban: mapped_bank_code = "TEST"
+                else: mapped_bank_code = "CENTRAL"
+                
+                to_account = {
+                    "account_id": f"EXT-{iban}",
+                    "iban": iban,
+                    "status": "active",
+                    "user_id": "EXTERNAL_USER",
+                    "bank_code": mapped_bank_code,
+                    "currency": "TRY",
+                    "is_external": True
+                }
+                body.to_account_id = to_account["account_id"]
     elif body.target_alias:
         # Resolve Easy Address
         address = await db.easy_addresses.find_one({"alias_value": body.target_alias})
@@ -249,6 +271,40 @@ async def transfer(
 
     if body.from_account_id == body.to_account_id:
         raise SameAccountTransferError()
+
+    if to_account.get("is_external"):
+        external_bank_code = to_account.get("bank_code")
+        ws_url = EXTERNAL_BANKS.get(external_bank_code)
+        if not ws_url:
+            raise HTTPException(status_code=400, detail=f"External bank '{external_bank_code}' WebSocket address not found in registry.")
+        
+        # XML oluştur
+        msg_id, xml_payload = generate_pacs008_xml(
+            sender_iban=from_account["iban"],
+            sender_name=current_user.get("full_name", "FinBank User"),
+            receiver_iban=to_account["iban"],
+            amount=body.amount,
+            currency="TRY",
+            description=body.description or "Inter-bank Transfer"
+        )
+        
+        # WS Bağlantısı kur ve Onay bekle
+        try:
+            target_url = ws_url.rstrip("/")
+            if not target_url.endswith(MY_BANK_CODE):
+                target_url = f"{target_url}/{MY_BANK_CODE}"
+            
+            async with websockets.connect(target_url, ping_interval=None) as websocket:
+                await websocket.send(xml_payload)
+                response_xml = await websocket.recv()
+                parsed_response = parse_pacs002_xml(response_xml)
+                
+                if parsed_response.get("status") != "ACCP":
+                    raise HTTPException(status_code=400, detail=f"Karsi banka transferi reddetti: {parsed_response.get('reason')}")
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Karsi bankaya erisilemiyor veya yanit alinamadi: {str(e)}")
 
     ledger = LedgerService(db)
     ip, ua = get_client_info(request)

@@ -3,10 +3,11 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import uuid
 from datetime import datetime, timezone
 import random
+import os
 
 async def main():
-    print("MongoDB'ye bağlanılıyor... (Lütfen Docker'ın çalıştığından emin olun)")
-    client = AsyncIOMotorClient("mongodb://localhost:27017", serverSelectionTimeoutMS=5000)
+    mongo_url = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+    client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
     
     try:
         await client.admin.command('ping')

@@ -8,19 +8,24 @@ Architecture: Modular Monolith
 =========================================================
 """
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import structlog
 import time
+import uuid
 
 from app.core.config import settings
-from app.core.database import connect_to_mongo, close_mongo_connection
+from app.core.database import connect_to_mongo, close_mongo_connection, get_database
 from app.core.logging import configure_logging
 from app.api.v1 import accounts, transactions, auth, employee, admin, customers, bills, cards, \
     exchange, ledger, audit, approvals, messages, easy_addresses, payment_requests, auto_bills, goals, analytics, market
+
+from app.core.banks import fetch_external_banks
+from app.utils.iso20022 import parse_pacs008_xml, generate_pacs002_xml
+from app.services.ledger_service import LedgerService
 
 # ── Configure Logging ──
 configure_logging()
@@ -35,6 +40,7 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     logger.info("Starting FinBank Core Banking System...")
     await connect_to_mongo()
+    await fetch_external_banks()
     logger.info("FinBank is ready to serve requests")
     yield
     logger.info("Shutting down FinBank...")
@@ -148,3 +154,64 @@ async def root():
         "docs": "/docs",
         "redoc": "/redoc",
     }
+
+
+# ── Inter-Bank WebSocket Endpoint ──
+@app.websocket("/ws/inter-bank/{sender_bank_code}")
+async def inter_bank_websocket(websocket: WebSocket, sender_bank_code: str, db=Depends(get_database)):
+    """Accept incoming ISO 20022 Pacs.008 transfers."""
+    await websocket.accept()
+    try:
+        xml_data = await websocket.receive_text()
+        transfer_details = parse_pacs008_xml(xml_data)
+        
+        receiver_iban = transfer_details.get("receiver_iban")
+        amount = transfer_details.get("amount")
+        msg_id = transfer_details.get("msg_id")
+        
+        if not receiver_iban or not amount:
+            reject_xml = generate_pacs002_xml(msg_id, "RJCT", "Missing receiver_iban or amount in pacs.008")
+            await websocket.send_text(reject_xml)
+            return
+
+        target_account = await db.accounts.find_one({"iban": receiver_iban, "status": "active"})
+        if not target_account:
+            reject_xml = generate_pacs002_xml(msg_id, "RJCT", "Account not found or inactive")
+            await websocket.send_text(reject_xml)
+            return
+
+        description = transfer_details.get("description", "Dis Banka Transferi")
+        
+        # Credit the user
+        ledger = LedgerService(db)
+        
+        try:
+            await ledger.deposit(
+                account_id=target_account["account_id"],
+                amount=amount,
+                created_by="EXTERNAL_BANK",
+                description=f"{description} (From: {transfer_details.get('sender_iban')})"
+            )
+            
+            accept_xml = generate_pacs002_xml(msg_id, "ACCP")
+            await websocket.send_text(accept_xml)
+            
+        except Exception as e:
+            logger.error("Interbank WS Ledger Deposit Error", error=str(e))
+            reject_xml = generate_pacs002_xml(msg_id, "RJCT", "Internal Error processing deposit")
+            await websocket.send_text(reject_xml)
+
+    except WebSocketDisconnect:
+        logger.info(f"[Inter-Bank WS] {sender_bank_code} client disconnected.")
+    except Exception as e:
+        logger.error(f"[Inter-Bank WS] Error: {e}")
+        try:
+            error_xml = generate_pacs002_xml("UNKNOWN", "RJCT", f"Internal Error: {str(e)}")
+            await websocket.send_text(error_xml)
+        except:
+            pass
+    finally:
+        try:
+            await websocket.close()
+        except RuntimeError:
+            pass
