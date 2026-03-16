@@ -1,19 +1,50 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { toast } from "react-hot-toast";
+import {
+    AlertCircle,
+    ArrowDownRight,
+    ArrowUpRight,
+    Eye,
+    EyeOff,
+    HandCoins,
+    Landmark,
+    Plus,
+    QrCode,
+    ReceiptText,
+    Send,
+    ShieldCheck,
+    Sparkles,
+    Wallet,
+} from "lucide-react";
 import { accountApi, customerApi, ledgerApi } from "../services/api";
-import { Link, useNavigate } from "react-router-dom";
-import { AlertCircle } from "lucide-react";
-import toast from "react-hot-toast";
+import {
+    BankActionTile,
+    BankEmptyState,
+    BankGlassCard,
+    BankListRow,
+    BankMetricCard,
+    BankPageHeader,
+    BankSectionCard,
+} from "../components/banking/BankUi";
+import TransactionReceipt from "../components/TransactionReceipt";
+
+const onboardingFields = [
+    { key: "full_name", label: "Ad Soyad", type: "text", placeholder: "Örnek: Abdullah Çelebi" },
+    { key: "national_id", label: "TC Kimlik", type: "text", placeholder: "11 haneli kimlik numarası" },
+    { key: "phone", label: "Telefon", type: "tel", placeholder: "+90 5xx xxx xx xx" },
+    { key: "date_of_birth", label: "Doğum Tarihi", type: "date" },
+    { key: "address", label: "Adres", type: "text", placeholder: "Mahalle, ilçe, şehir" },
+];
 
 export default function DashboardPage() {
-    const { user, isAdmin } = useAuth();
-    const navigate = useNavigate();
     const [accounts, setAccounts] = useState([]);
     const [balances, setBalances] = useState({});
     const [customer, setCustomer] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showBalance, setShowBalance] = useState(true);
     const [recentTx, setRecentTx] = useState([]);
+    const [selectedTx, setSelectedTx] = useState(null);
     const [customerForm, setCustomerForm] = useState({
         full_name: "",
         national_id: "",
@@ -21,283 +52,268 @@ export default function DashboardPage() {
         date_of_birth: "",
         address: "",
     });
-    const [showCustomerForm, setShowCustomerForm] = useState(false);
 
     useEffect(() => {
         loadData();
     }, []);
 
     const loadData = async () => {
+        setLoading(true);
         try {
-            const accRes = await accountApi.listMine();
-            setAccounts(accRes.data);
-            const balanceMap = {};
-            for (const acc of accRes.data) {
-                try {
-                    const balRes = await accountApi.getBalance(acc.id);
-                    balanceMap[acc.id] = balRes.data.balance;
-                } catch {
-                    balanceMap[acc.id] = 0;
-                }
-            }
-            setBalances(balanceMap);
+            const accountsRes = await accountApi.listMine();
+            const nextAccounts = Array.isArray(accountsRes.data) ? accountsRes.data : [];
+            setAccounts(nextAccounts);
+
+            const balanceEntries = await Promise.all(
+                nextAccounts.map(async (account) => {
+                    const accountId = account.id || account.account_id;
+                    try {
+                        const balanceRes = await accountApi.getBalance(accountId);
+                        return [accountId, Number(balanceRes.data?.balance || 0)];
+                    } catch {
+                        return [accountId, Number(account.balance || 0)];
+                    }
+                }),
+            );
+            setBalances(Object.fromEntries(balanceEntries));
+
             try {
-                const custRes = await customerApi.getMe();
-                setCustomer(custRes.data);
+                const customerRes = await customerApi.getMe();
+                setCustomer(customerRes.data);
             } catch {
-                setShowCustomerForm(true);
+                setCustomer(null);
             }
+
             try {
-                const txRes = await ledgerApi.getEntries({ skip: 0, limit: 5 });
-                setRecentTx(txRes.data.entries || []);
+                const txRes = await ledgerApi.getEntries({ skip: 0, limit: 6 });
+                setRecentTx(Array.isArray(txRes.data?.entries) ? txRes.data.entries : Array.isArray(txRes.data) ? txRes.data : []);
             } catch {
-                // ignore
+                setRecentTx([]);
             }
-        } catch (err) {
-            console.error(err);
+        } catch (error) {
+            toast.error("Dashboard verileri yüklenemedi.");
         } finally {
             setLoading(false);
         }
     };
 
-    const createCustomer = async (e) => {
-        e.preventDefault();
+    const createCustomer = async (event) => {
+        event.preventDefault();
         try {
             const res = await customerApi.create(customerForm);
             setCustomer(res.data);
-            setShowCustomerForm(false);
-            toast.success("Müşteri profili oluşturuldu!");
-        } catch (err) {
-            toast.error(err.response?.data?.detail || "Profil oluşturulamadı");
+            toast.success("Müşteri profiliniz oluşturuldu.");
+            loadData();
+        } catch (error) {
+            toast.error(error.response?.data?.detail || "Profil oluşturulamadı.");
         }
     };
 
-    const totalBalance = Object.values(balances).reduce((a, b) => a + b, 0);
-    const mainAccount = accounts[0];
+    const totalBalance = useMemo(
+        () => Object.values(balances).reduce((sum, value) => sum + Number(value || 0), 0),
+        [balances],
+    );
 
-    // Format helpers
-    const formatMoney = (val) => new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2 }).format(val);
-    const wholeNumber = Math.floor(totalBalance).toLocaleString("tr-TR");
-    const decimalPart = (totalBalance % 1).toFixed(2).substring(2);
+    const spendingBars = [42, 68, 54, 82, 63, 74, 88];
+
+    const formatCurrency = (value, currency = "TRY") => new Intl.NumberFormat("tr-TR", {
+        style: "currency",
+        currency,
+        minimumFractionDigits: 2,
+    }).format(Number(value || 0));
+
+    const maskedBalance = showBalance ? formatCurrency(totalBalance) : "••••••••";
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+            <div className="flex min-h-[60vh] items-center justify-center">
+                <div className="h-12 w-12 animate-spin rounded-full border-4 border-white/10 border-t-primary" />
             </div>
         );
     }
 
     return (
-        <div className="relative flex min-h-[calc(100vh-80px)] md:min-h-screen w-full flex-col overflow-x-hidden mesh-gradient pb-24 md:pb-8 font-display">
-            {/* Header */}
-            <header className="flex items-center px-6 pt-8 pb-4 justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="size-12 rounded-full border-2 border-primary/40 p-0.5 shadow-glow-green">
-                        <img
-                            alt="User Profile"
-                            className="rounded-full w-full h-full object-cover"
-                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAY5NNeAkOaCfAMrl3FGAuzimQN7cCglkn6u31YB1Jy3JsfzU0czpLSnrd4gQXyLsfNl40dOg_34b8piCk9wDFJe4QgZd4pnJMjrJCL1TXEmSGp7Fot4s73y2y_XRhC6v_dxYKpKcp4VFEdc0KEg2VCATQg7QN6tKjqILd_dLrSwo8IZsaUw0pes33lCsHEgZIX6VxEcfOAikDqP89crh1Kaa6kj2Gjc_zHPjnZN1B0x0PrFpSmB_TWLL5xhuMLYPdZ5QRscYWIMWzU"
-                        />
-                    </div>
-                    <div>
-                        <p className="text-[10px] uppercase tracking-widest text-[#a0a0a0] font-bold">Premium Tier</p>
-                        <h2 className="text-white text-base font-semibold leading-tight font-outfit">
-                            {customer?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "Misafir"}
-                        </h2>
-                    </div>
-                </div>
-                <div className="flex gap-3">
-                    <button className="flex size-10 items-center justify-center rounded-full glass-card text-white hover:bg-white/10 transition-colors shadow-premium">
-                        <span className="material-symbols-outlined text-[20px]">search</span>
-                    </button>
-                    <button className="relative flex size-10 items-center justify-center rounded-full glass-card text-white hover:bg-white/10 transition-colors shadow-premium">
-                        <span className="material-symbols-outlined text-[20px]">notifications</span>
-                        {customer?.status !== "active" ? (
-                            <span className="absolute top-2 right-2 size-2.5 bg-[#ff5252] rounded-full border-2 border-[#121212]"></span>
-                        ) : (
-                            <span className="absolute top-2 right-2 size-2.5 bg-primary rounded-full border-2 border-[#121212]"></span>
-                        )}
-                    </button>
-                </div>
-            </header>
+        <div className="space-y-6 pb-8">
+            <BankPageHeader
+                eyebrow="Premium Dashboard"
+                title={`Hoş geldin${customer?.full_name ? `, ${customer.full_name.split(" ")[0]}` : ""}`}
+                description="Güncel bakiye, işlem akışı ve hızlı bankacılık aksiyonlarını tek bakışta yönet.">
+            </BankPageHeader>
 
-            {/* Customer Registration Form */}
-            {showCustomerForm && !customer && (
-                <section className="px-6 mb-6">
-                    <div className="glass-card !bg-amber-500/10 !border-amber-500/30 rounded-2xl p-6 shadow-premium">
-                        <div className="flex items-center gap-3 mb-4">
-                            <AlertCircle size={24} className="text-amber-500 flex-shrink-0" />
-                            <h3 className="text-amber-400 font-bold text-lg font-outfit">Profili Tamamlayın</h3>
+            <div className="grid gap-6 xl:grid-cols-[1.4fr_0.95fr]">
+                <BankGlassCard className="relative overflow-hidden rounded-[2rem] border-white/10 bg-[linear-gradient(135deg,rgba(8,15,32,0.94),rgba(18,29,58,0.86))] shadow-[0_30px_70px_rgba(2,6,23,0.38)]">
+                    <div className="absolute -right-16 top-0 h-48 w-48 rounded-full bg-primary/16 blur-3xl" />
+                    <div className="absolute -left-10 bottom-0 h-40 w-40 rounded-full bg-violet-500/12 blur-3xl" />
+                    <div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+                        <div>
+                            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-emerald-300">
+                                <Sparkles size={12} />
+                                Premium banka görünümü
+                            </div>
+                            <p className="bank-section-label mb-3 text-[11px]">Toplam Kullanılabilir Bakiye</p>
+                            <div className="flex items-center gap-3">
+                                <h2 className="font-display text-5xl font-black tracking-[-0.07em] text-white sm:text-6xl">{maskedBalance}</h2>
+                                <button type="button" onClick={() => setShowBalance((current) => !current)} className="bank-icon-button shrink-0">
+                                    {showBalance ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
+                            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
+                                Akıllı özet paneli; vadesiz, döviz ve bağlı kart bakiyelerini tek premium yüzeyde toplar.
+                            </p>
                         </div>
-                        <p className="text-slate-300 mb-6 text-sm">
-                            Bankacılık işlemlerine başlamak için lütfen profil bilgilerinizi doldurun.
-                        </p>
-                        <form onSubmit={createCustomer} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-[10px] font-bold text-[#a0a0a0] mb-1 uppercase tracking-wider">Ad Soyad</label>
-                                    <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="Ali Veli" value={customerForm.full_name} onChange={e => setCustomerForm({ ...customerForm, full_name: e.target.value })} required />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold text-[#a0a0a0] mb-1 uppercase tracking-wider">TC Kimlik</label>
-                                    <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="11 haneli" value={customerForm.national_id} onChange={e => setCustomerForm({ ...customerForm, national_id: e.target.value })} required pattern="\\d{11}" maxLength="11" />
-                                </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2 lg:w-[18rem]">
+                            <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
+                                <p className="bank-section-label mb-2 text-[11px]">Aktif Hesap</p>
+                                <p className="text-lg font-bold text-white">{accounts.length}</p>
+                                <p className="mt-1 text-sm text-[var(--text-secondary)]">Bireysel portföy</p>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-[10px] font-bold text-[#a0a0a0] mb-1 uppercase tracking-wider">Telefon</label>
-                                    <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="+905551234567" value={customerForm.phone} onChange={e => setCustomerForm({ ...customerForm, phone: e.target.value })} required />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold text-[#a0a0a0] mb-1 uppercase tracking-wider">Doğum Tarihi</label>
-                                    <input type="date" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all [color-scheme:dark]" value={customerForm.date_of_birth} onChange={e => setCustomerForm({ ...customerForm, date_of_birth: e.target.value })} required />
-                                </div>
+                            <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
+                                <p className="bank-section-label mb-2 text-[11px]">Son 7 Gün</p>
+                                <p className="text-lg font-bold text-emerald-300">+2.4%</p>
+                                <p className="mt-1 text-sm text-[var(--text-secondary)]">Net büyüme</p>
                             </div>
-                            <button type="submit" className="w-full bg-primary text-[#0a0a16] py-4 rounded-xl font-bold text-lg shadow-[0_0_15px_rgba(19,236,91,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all mt-4 font-outfit">
+                        </div>
+                    </div>
+                </BankGlassCard>
+
+                <BankSectionCard
+                    title="Hızlı İşlemler"
+                    description="Günlük bankacılık akışlarını tek tıkla başlat."
+                >
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <BankActionTile icon={Send} title="Para Gönder" description="IBAN, hesap veya kolay adres ile anında transfer." to="/customer/transfer" tone="primary" />
+                        <BankActionTile icon={HandCoins} title="Para İste" description="Kişilerinden ödeme talebi oluştur ve takip et." to="/customer/payment-requests" tone="success" />
+                        <BankActionTile icon={QrCode} title="QR İşlemleri" description="Mobilden okut, hızlı tahsilat veya ödeme yap." to="/customer/qr" tone="secondary" />
+                        <BankActionTile icon={ReceiptText} title="Fatura Öde" description="Düzenli ödemelerini güvenli şekilde yönetin." to="/customer/bills" tone="warning" />
+                    </div>
+                </BankSectionCard>
+            </div>
+
+            {!customer ? (
+                <BankSectionCard
+                    title="Profilini tamamla"
+                    description="Hesap açılışı ve güvenli bankacılık özellikleri için kimlik profilin tamamlanmalı."
+                >
+                    <form onSubmit={createCustomer} className="grid gap-4 lg:grid-cols-2">
+                        {onboardingFields.map((field) => (
+                            <label key={field.key} className={field.key === "address" ? "lg:col-span-2" : ""}>
+                                <span className="form-label">{field.label}</span>
+                                <input
+                                    type={field.type}
+                                    className="form-input"
+                                    placeholder={field.placeholder}
+                                    value={customerForm[field.key]}
+                                    onChange={(event) => setCustomerForm((current) => ({ ...current, [field.key]: event.target.value }))}
+                                    required={field.key !== "address"}
+                                    maxLength={field.key === "national_id" ? 11 : undefined}
+                                />
+                            </label>
+                        ))}
+                        <div className="lg:col-span-2 flex flex-wrap items-center gap-3 pt-2">
+                            <button type="submit" className="bank-primary-btn">
+                                <Plus size={18} />
                                 Profili Oluştur
                             </button>
-                        </form>
-                    </div>
-                </section>
-            )}
-
-            {/* Balance Section */}
-            {customer && (
-                <section className="px-6 py-6 text-center cursor-pointer transition-transform active:scale-95" onClick={() => setShowBalance(!showBalance)}>
-                    <p className="text-[#a0a0a0] text-sm font-medium mb-1 font-outfit">Toplam Bakiyen</p>
-                    <h1 className="text-white tracking-tight text-5xl md:text-6xl font-bold leading-tight neon-glow font-outfit">
-                        {showBalance ? (
-                            <>
-                                ₺{wholeNumber}<span className="text-2xl md:text-3xl opacity-60">.{decimalPart}</span>
-                            </>
-                        ) : (
-                            <span className="tracking-widest opacity-80">••••••••</span>
-                        )}
-                    </h1>
-                    <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
-                        <span className="material-symbols-outlined text-primary text-xs">trending_up</span>
-                        <p className="text-primary text-[10px] font-bold uppercase tracking-wider">+%2.5 bu ay</p>
-                    </div>
-                </section>
-            )}
-
-            {/* 3D Floating Card */}
-            {customer && accounts.length > 0 && (
-                <section className="px-6 py-4 flex justify-center">
-                    <div className="relative group w-full max-w-sm">
-                        {/* Shadow/Glow behind card */}
-                        <div className="absolute inset-0 bg-primary/20 blur-[40px] rounded-[2rem] translate-y-4"></div>
-
-                        {/* Main Card Body */}
-                        <div className="relative glass-card rounded-[2rem] p-7 aspect-[1.586/1] overflow-hidden flex flex-col justify-between border-white/20 shadow-card transition-transform duration-300 hover:scale-[1.02]">
-                            {/* Card Background Elements */}
-                            <div className="absolute -top-10 -right-10 size-40 bg-primary/20 rounded-full blur-3xl"></div>
-                            <div className="absolute top-0 right-0 p-6 opacity-30 text-white">
-                                <svg fill="none" height="40" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" width="40">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <circle cx="12" cy="12" r="4"></circle>
-                                </svg>
-                            </div>
-
-                            <div className="flex justify-between items-start z-10">
-                                <div className="flex flex-col">
-                                    <p className="text-[10px] text-slate-300 font-bold uppercase tracking-[0.2em] mb-1">Hesap Türü</p>
-                                    <p className="text-white text-lg font-outfit font-bold tracking-wide">{mainAccount?.account_type === "checking" ? "Vadesiz" : "Tasarruf"}</p>
-                                </div>
-                                <span className="material-symbols-outlined text-white text-[32px] opacity-90">contactless</span>
-                            </div>
-
-                            <div className="space-y-4 z-10">
-                                <div className="flex gap-4 items-center">
-                                    <span className="text-white text-lg sm:text-xl md:text-2xl font-medium opacity-90 tracking-widest font-mono drop-shadow-md">
-                                        {mainAccount?.iban ? `${mainAccount.iban.substring(0, 4)} ${mainAccount.iban.substring(4, 8)} **** **** ${mainAccount.iban.substring(mainAccount.iban.length - 4)}` : "**** **** **** 8829"}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between items-end">
-                                    <div className="flex flex-col">
-                                        <p className="text-[10px] text-slate-300 font-bold uppercase tracking-[0.2em] mb-1">Hesap Sahibi</p>
-                                        <p className="text-white text-sm font-outfit tracking-wide font-semibold">{customer?.full_name?.toUpperCase()}</p>
-                                    </div>
-                                    <div className="flex flex-col items-end">
-                                        <p className="text-[10px] text-slate-300 font-bold uppercase tracking-[0.2em] mb-1">Geçerlilik</p>
-                                        <p className="text-white text-sm font-outfit font-semibold">09/28</p>
-                                    </div>
-                                </div>
+                            <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-300">
+                                <AlertCircle size={14} />
+                                Bilgiler bankacılık süreçleri için doğrulanır.
                             </div>
                         </div>
-                    </div>
-                </section>
-            )}
+                    </form>
+                </BankSectionCard>
+            ) : null}
 
-            {/* Quick Actions */}
-            <section className="grid grid-cols-3 gap-4 px-6 py-6 max-w-md mx-auto w-full">
-                <Link to="/customer/transfer" className="flex flex-col items-center gap-2 group cursor-pointer no-underline">
-                    <div className="size-16 rounded-2xl glass-card flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary/5 border-primary/20 group-hover:scale-105 group-active:scale-95 transition-all duration-300 shadow-premium">
-                        <span className="material-symbols-outlined text-primary text-[32px]">send</span>
+            <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                <div className="space-y-6">
+                    <div className="grid gap-4 sm:grid-cols-3">
+                        <BankMetricCard icon={Wallet} label="Toplam Bakiye" value={formatCurrency(totalBalance)} delta="Müşteri varlık toplamı" tone="primary" />
+                        <BankMetricCard icon={Landmark} label="Ana Hesap" value={accounts[0]?.account_type === "savings" ? "Tasarruf" : "Vadesiz"} delta={accounts[0]?.iban ? `${accounts[0].iban.slice(0, 8)}…` : "Henüz hesap yok"} tone="secondary" />
+                        <BankMetricCard icon={ShieldCheck} label="Güvenlik" value={customer?.status === "active" ? "Aktif" : "İnceleniyor"} delta="Bankacılık koruması açık" tone="success" />
                     </div>
-                    <p className="text-xs font-semibold text-[#a0a0a0] group-hover:text-white transition-colors font-outfit">Gönder</p>
-                </Link>
-                <Link to="/customer/payment-requests" className="flex flex-col items-center gap-2 group cursor-pointer no-underline">
-                    <div className="size-16 rounded-2xl glass-card flex items-center justify-center bg-gradient-to-br from-emerald-500/30 to-emerald-500/5 border-emerald-500/20 group-hover:scale-105 group-active:scale-95 transition-all duration-300 shadow-premium">
-                        <span className="material-symbols-outlined text-emerald-500 text-[32px]">download</span>
-                    </div>
-                    <p className="text-xs font-semibold text-[#a0a0a0] group-hover:text-white transition-colors font-outfit">Al / İste</p>
-                </Link>
-                <Link to="/customer/accounts" className="flex flex-col items-center gap-2 group cursor-pointer no-underline">
-                    <div className="size-16 rounded-2xl glass-card flex items-center justify-center bg-gradient-to-br from-amber-500/30 to-amber-500/5 border-amber-500/20 group-hover:scale-105 group-active:scale-95 transition-all duration-300 shadow-premium">
-                        <span className="material-symbols-outlined text-amber-500 text-[32px]">payments</span>
-                    </div>
-                    <p className="text-xs font-semibold text-[#a0a0a0] group-hover:text-white transition-colors font-outfit">Yeni Hesap</p>
-                </Link>
-            </section>
 
-            {/* Transactions List */}
-            <section className="px-6 py-4 flex-1 md:max-w-3xl md:mx-auto md:w-full">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-white font-outfit font-bold text-xl">Son İşlemler</h3>
-                    <Link to="/customer/ledger" className="text-primary text-xs font-bold uppercase tracking-wider hover:opacity-80 transition-opacity">Tümünü Gör</Link>
+                    <BankSectionCard title="Hesaplarım" description="Her hesabın bakiyesini ve kart eşleşmesini tek panelde gör.">
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {accounts.length === 0 ? (
+                                <BankEmptyState icon={Wallet} title="Henüz hesap bulunmuyor" description="İlk hesabını oluşturduğunda burada görünür." />
+                            ) : accounts.map((account, index) => {
+                                const accountId = account.id || account.account_id;
+                                const currency = account.currency || "TRY";
+                                const balance = balances[accountId] || 0;
+                                return (
+                                    <BankGlassCard key={accountId} className="relative overflow-hidden rounded-[1.7rem] border-white/8 bg-white/[0.03]">
+                                        <div className={`absolute inset-x-0 top-0 h-1 ${index % 2 === 0 ? "bg-primary" : "bg-violet-400"}`} />
+                                        <p className="bank-section-label mb-3 text-[11px]">{account.account_name || (account.account_type === "savings" ? "Tasarruf Hesabı" : "TRY Vadesiz")}</p>
+                                        <h3 className="font-display text-3xl font-black tracking-[-0.06em] text-[var(--text-primary)]">{formatCurrency(balance, currency)}</h3>
+                                        <div className="mt-5 flex items-center justify-between text-sm text-[var(--text-secondary)]">
+                                            <span>{account.iban ? `${account.iban.slice(0, 4)} •••• ${account.iban.slice(-4)}` : (account.account_number || "")}</span>
+                                            <Link to="/customer/accounts" className="text-primary no-underline">Detay</Link>
+                                        </div>
+                                    </BankGlassCard>
+                                );
+                            })}
+                        </div>
+                    </BankSectionCard>
                 </div>
 
-                {recentTx.length === 0 ? (
-                    <div className="p-8 text-center glass-card rounded-2xl shadow-premium">
-                        <span className="material-symbols-outlined text-5xl text-slate-500 mb-2">receipt_long</span>
-                        <p className="text-[#a0a0a0] text-sm font-medium">Henüz bir işleminiz bulunmuyor.</p>
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {recentTx.map((tx, idx) => {
-                            const isCredit = tx.type === "CREDIT";
-                            const icon = isCredit ? "arrow_downward" : "arrow_upward";
-                            const iconColorClass = isCredit ? "text-emerald-500" : "text-[#ff5252]";
-                            const bgClass = isCredit ? "bg-emerald-500/10" : "bg-[#ff5252]/10";
-                            const defaultTitle = isCredit ? "Gelen Para" : "Giden Para";
-
-                            return (
-                                <div key={tx.id || idx} className="glass-card rounded-2xl p-4 flex items-center justify-between border-white/5 hover:border-white/10 hover:bg-white/5 transition-all cursor-pointer shadow-sm">
-                                    <div className="flex items-center gap-4">
-                                        <div className={`size-12 rounded-xl ${bgClass} flex items-center justify-center shrink-0`}>
-                                            <span className={`material-symbols-outlined ${iconColorClass} text-2xl`}>{icon}</span>
-                                        </div>
-                                        <div className="flex-1 min-w-0 pr-4">
-                                            <p className="text-white font-outfit font-bold text-base truncate">
-                                                {tx.description || defaultTitle}
-                                            </p>
-                                            <p className="text-[#a0a0a0] text-[10px] uppercase font-bold tracking-wider truncate mt-0.5">
-                                                {tx.category || "Transfer"} • {new Date(tx.created_at).toLocaleDateString("tr-TR", { month: "short", day: "numeric" })}
-                                            </p>
-                                        </div>
+                <div className="space-y-6">
+                    <BankSectionCard title="Harcama Ritmi" description="Son 7 gün trendiyle hesabının temposunu gör.">
+                        <div className="flex items-end gap-3">
+                            {spendingBars.map((value, index) => (
+                                <div key={index} className="flex flex-1 flex-col items-center gap-3">
+                                    <div className="relative h-44 w-full overflow-hidden rounded-t-[1.2rem] bg-white/[0.04]">
+                                        <div
+                                            className="absolute inset-x-0 bottom-0 rounded-t-[1.2rem] bg-gradient-to-t from-primary via-cyan-400 to-blue-200 shadow-[0_0_18px_rgba(59,130,246,0.24)]"
+                                            style={{ height: `${value}%` }}
+                                        />
                                     </div>
-                                    <p className={`${isCredit ? 'text-emerald-500' : 'text-white'} font-outfit font-bold text-lg whitespace-nowrap`}>
-                                        {isCredit ? '+' : '-'}₺{Math.abs(tx.amount).toLocaleString("tr-TR", { minimumFractionDigits: 2 })}
-                                    </p>
+                                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--text-secondary)]">
+                                        {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cts', 'Paz'][index]}
+                                    </span>
                                 </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </section>
+                            ))}
+                        </div>
+                    </BankSectionCard>
+
+                    <BankSectionCard title="Son İşlemler" description="Yeni hareketlerini anlık olarak takip et." action={<Link to="/customer/ledger" className="text-sm font-bold text-primary no-underline">Tümünü Gör</Link>}>
+                        <div className="space-y-3">
+                            {recentTx.length === 0 ? (
+                                <BankEmptyState icon={ReceiptText} title="Henüz hareket bulunmuyor" description="İlk transfer veya ödeme sonrası işlem akışı burada görünür." className="py-8" />
+                            ) : recentTx.map((tx, index) => {
+                                const isCredit = tx.direction === "CREDIT" || tx.type === "CREDIT";
+                                return (
+                                    <div key={tx.id || tx.entry_id || index} className="flex grid-cols-[1fr_auto] items-center gap-4 py-1">
+                                        <BankListRow
+                                            leading={
+                                                <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${isCredit ? "bg-emerald-500/14 text-emerald-400" : "bg-rose-500/14 text-rose-400"}`}>
+                                                    {isCredit ? <ArrowDownRight size={18} /> : <ArrowUpRight size={18} />}
+                                                </span>
+                                            }
+                                            title={tx.description || (isCredit ? "Gelen transfer" : "Giden işlem")}
+                                            description={new Date(tx.created_at).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" })}
+                                            trailing={<span className={isCredit ? "amount-credit" : "amount-debit"}>{`${isCredit ? "+" : "-"}${formatCurrency(Math.abs(tx.amount || 0), tx.currency || "TRY")}`}</span>}
+                                            className="flex-1 border-none bg-transparent"
+                                        />
+                                        <button 
+                                            title="Dekontu Görüntüle"
+                                            onClick={() => setSelectedTx(tx)}
+                                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/5 text-[var(--text-secondary)] transition-colors hover:bg-white/10 hover:text-white"
+                                        >
+                                            <ReceiptText size={16} />
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </BankSectionCard>
+                </div>
+            </div>
+
+            {/* Receipt Modal */}
+            <TransactionReceipt 
+                transaction={selectedTx} 
+                onPreviewClose={() => setSelectedTx(null)} 
+            />
         </div>
     );
 }
-

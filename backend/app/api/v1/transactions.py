@@ -250,19 +250,38 @@ async def transfer(
     if body.from_account_id == body.to_account_id:
         raise SameAccountTransferError()
 
-    if to_account["status"] != "active":
-        raise AccountFrozenError()
-
     ledger = LedgerService(db)
     ip, ua = get_client_info(request)
 
     try:
+        # Check if the transfer is subject to commissions
+        commission_amount = 0.0
+        commission_type = "EFT_FEE"
+        commission_desc = "EFT Islem Ucreti"
+
+        # 1. Credit Card Cash Advance Fee
+        if from_account.get("account_type") == "credit":
+            # Rule: 2.5% of the amount + 15 TRY fixed
+            commission_amount = (body.amount * 0.025) + 15.0
+            commission_type = "CASH_ADVANCE_FEE"
+            commission_desc = "Kredi Karti Nakit Avans Ucreti"
+        
+        # 2. EFT Fee (Standard checking account to an external IBAN)
+        elif body.target_iban and not body.target_iban.upper().startswith("TRF"): 
+            # If target IBAN is not a FinBank internal IBAN (starts with TRF), it's EFT
+            commission_amount = 5.0
+            commission_type = "EFT_FEE"
+            commission_desc = "Baska Bankaya Transfer (EFT) Ucreti"
+
         txn_ref = await ledger.execute_transfer(
             from_account_id=body.from_account_id,
             to_account_id=body.to_account_id,
             amount=body.amount,
             created_by=current_user["user_id"],
             description=body.description or "Internal Transfer",
+            commission_amount=commission_amount,
+            commission_type=commission_type,
+            commission_desc=commission_desc
         )
     except InsufficientFundsError:
         await log_audit(

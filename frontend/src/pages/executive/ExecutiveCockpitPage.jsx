@@ -7,6 +7,7 @@ import { customerApi, accountApi, ledgerApi, auditApi, adminApi, approvalsApi } 
 import toast from "react-hot-toast";
 import ApprovalCard from "../../components/ApprovalCard";
 import { ListSkeleton } from "../../components/SkeletonLoader";
+import TransactionReceipt from "../../components/TransactionReceipt";
 
 export default function ExecutiveCockpitPage() {
     const [stats, setStats] = useState({
@@ -14,10 +15,12 @@ export default function ExecutiveCockpitPage() {
         activeCustomers: 0,
         todayTransactions: 0,
         todayVolume: 0,
+        totalInvestmentVolume: 0,
     });
     const [recentTx, setRecentTx] = useState([]);
     const [recentAudit, setRecentAudit] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedTx, setSelectedTx] = useState(null);
 
     // CEO Management States
     const [users, setUsers] = useState([]);
@@ -51,9 +54,21 @@ export default function ExecutiveCockpitPage() {
 
             const customers = customersRes.status === "fulfilled" ? customersRes.value.data : [];
             const accounts = accountsRes.status === "fulfilled" ? accountsRes.value.data : [];
-            const ledger = ledgerRes.status === "fulfilled" ? ledgerRes.value.data : [];
-            const audit = auditRes.status === "fulfilled" ? auditRes.value.data : [];
+            const ledgerData = ledgerRes.status === "fulfilled" ? ledgerRes.value.data : {};
+            const auditData = auditRes.status === "fulfilled" ? auditRes.value.data : {};
+            
+            const ledger = ledgerData.entries || [];
+            const audit = auditData.logs || [];
             const appList = appRes.status === "fulfilled" ? appRes.value.data : [];
+
+            // Add an analytics call to grab the total commission revenue
+            let bankStats = {};
+            try {
+                const statsRes = await adminApi.getStatsOverview();
+                bankStats = statsRes.data || {};
+            } catch (e) {
+                console.error("Failed to load bank stats overview", e);
+            }
 
             const totalDeposit = Array.isArray(accounts)
                 ? accounts.reduce((sum, a) => sum + (a.balance || 0), 0)
@@ -66,6 +81,8 @@ export default function ExecutiveCockpitPage() {
                 activeCustomers: Array.isArray(customers) ? customers.length : 0,
                 todayTransactions: todayTx.length,
                 todayVolume: todayTx.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0),
+                totalCommissionRevenue: bankStats.total_commission_revenue || 0,
+                totalInvestmentVolume: bankStats.total_investment_volume || 0,
             });
             setRecentTx(todayTx.slice(0, 8));
             setRecentAudit(Array.isArray(audit) ? audit.slice(0, 5) : []);
@@ -242,6 +259,19 @@ export default function ExecutiveCockpitPage() {
                             </div>
                         </div>
 
+                        {/* Toplam Komisyon Geliri */}
+                        <div style={cardStyle("linear-gradient(135deg, #2563eb, #3b82f6)")}>
+                            <div style={{ opacity: 0.2, position: "absolute", right: -10, top: -10 }}>
+                                <Shield size={80} />
+                            </div>
+                            <Shield size={22} style={{ marginBottom: 8 }} />
+                            <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 4 }}>Banka Komisyon Geliri</div>
+                            <div style={{ fontSize: 26, fontWeight: 800 }}>{formatCurrency(stats.totalCommissionRevenue)}</div>
+                            <div style={{ fontSize: 11, opacity: 0.7, marginTop: 8, display: "flex", alignItems: "center", gap: 4 }}>
+                                <Activity size={14} /> EFT ve Faiz gelirleri
+                            </div>
+                        </div>
+
                         {/* İşlem Sayısı */}
                         <div style={cardStyle("linear-gradient(135deg, #059669, #10b981)")}>
                             <div style={{ opacity: 0.2, position: "absolute", right: -10, top: -10 }}>
@@ -252,6 +282,19 @@ export default function ExecutiveCockpitPage() {
                             <div style={{ fontSize: 26, fontWeight: 800 }}>{stats.todayTransactions}</div>
                             <div style={{ fontSize: 11, opacity: 0.7, marginTop: 8, display: "flex", alignItems: "center", gap: 4 }}>
                                 <Clock size={14} /> Toplam kayıtlı işlem
+                            </div>
+                        </div>
+                        
+                        {/* Toplam Yatırım Hacmi */}
+                        <div style={cardStyle("linear-gradient(135deg, #0ea5e9, #0284c7)")}>
+                            <div style={{ opacity: 0.2, position: "absolute", right: -10, top: -10 }}>
+                                <TrendingUp size={80} />
+                            </div>
+                            <TrendingUp size={22} style={{ marginBottom: 8 }} />
+                            <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 4 }}>Müşteri Yatırım Hacmi</div>
+                            <div style={{ fontSize: 26, fontWeight: 800 }}>{formatCurrency(stats.totalInvestmentVolume)}</div>
+                            <div style={{ fontSize: 11, opacity: 0.7, marginTop: 8, display: "flex", alignItems: "center", gap: 4 }}>
+                                <Activity size={14} /> Kripto & Hisse varlıkları
                             </div>
                         </div>
 
@@ -270,12 +313,9 @@ export default function ExecutiveCockpitPage() {
                     </div>
 
                     {/* Two Column Layout */}
-                    <div style={{
-                        display: "grid", gridTemplateColumns: "1fr 1fr",
-                        gap: 20,
-                    }}>
+                    <div className="grid-two-col" style={{ gap: 20 }}>
                         {/* Son İşlemler */}
-                        <div className="card" style={{ gridColumn: window.innerWidth < 768 ? "1 / -1" : undefined }}>
+                        <div className="card">
                             <div className="card-header" style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: 12 }}>
                                 <h2 className="card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                     <Eye size={18} /> Son İşlemler
@@ -292,25 +332,51 @@ export default function ExecutiveCockpitPage() {
                                             display: "flex", justifyContent: "space-between", alignItems: "center",
                                             padding: "10px 16px", borderBottom: i < recentTx.length - 1 ? "1px solid var(--border-color)" : "none",
                                         }}>
-                                            <div>
-                                                <div style={{ fontWeight: 600, fontSize: 13 }}>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontWeight: 600, fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
                                                     {tx.type === "DEPOSIT" ? "💰 Yatırma" :
                                                         tx.type === "WITHDRAW" ? "💸 Çekme" :
                                                             tx.type === "TRANSFER" ? "🔄 Transfer" : tx.type}
+                                                    <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 400 }}>
+                                                        {tx.account_id?.slice(0, 8)}...
+                                                    </span>
                                                 </div>
-                                                <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                                                    {tx.account_id?.slice(0, 8)}...
+                                                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+                                                    {formatDateTime(tx.created_at)}
                                                 </div>
                                             </div>
-                                            <div style={{
-                                                fontWeight: 700, fontSize: 14,
-                                                color: tx.direction === "DEBIT" ? "var(--danger)" : "var(--success)",
-                                            }}>
-                                                {tx.direction === "DEBIT" ? (
-                                                    <><ArrowDownRight size={14} /> -{formatCurrency(Math.abs(tx.amount))}</>
-                                                ) : (
-                                                    <><ArrowUpRight size={14} /> +{formatCurrency(Math.abs(tx.amount))}</>
-                                                )}
+                                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                                <div style={{
+                                                    fontWeight: 700, fontSize: 14,
+                                                    color: tx.direction === "DEBIT" ? "var(--danger)" : "var(--success)",
+                                                    textAlign: "right"
+                                                }}>
+                                                    {tx.direction === "DEBIT" ? (
+                                                        <><ArrowDownRight size={14} style={{ verticalAlign: 'middle' }} /> -{formatCurrency(Math.abs(tx.amount))}</>
+                                                    ) : (
+                                                        <><ArrowUpRight size={14} style={{ verticalAlign: 'middle' }} /> +{formatCurrency(Math.abs(tx.amount))}</>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    onClick={() => setSelectedTx(tx)}
+                                                    style={{
+                                                        background: "none", border: "none", cursor: "pointer", 
+                                                        color: "var(--text-muted)", display: "flex", alignItems: "center", 
+                                                        justifyContent: "center", padding: 6, borderRadius: "50%",
+                                                        transition: "all 0.2s"
+                                                    }}
+                                                    title="Makbuz Görüntüle"
+                                                    onMouseOver={(e) => {
+                                                        e.currentTarget.style.background = "var(--bg-secondary)";
+                                                        e.currentTarget.style.color = "var(--text-primary)";
+                                                    }}
+                                                    onMouseOut={(e) => {
+                                                        e.currentTarget.style.background = "transparent";
+                                                        e.currentTarget.style.color = "var(--text-muted)";
+                                                    }}
+                                                >
+                                                    <Eye size={16} />
+                                                </button>
                                             </div>
                                         </div>
                                     ))
@@ -319,7 +385,7 @@ export default function ExecutiveCockpitPage() {
                         </div>
 
                         {/* Son Denetim Kayıtları */}
-                        <div className="card" style={{ gridColumn: window.innerWidth < 768 ? "1 / -1" : undefined }}>
+                        <div className="card">
                             <div className="card-header" style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: 12 }}>
                                 <h2 className="card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                     <AlertTriangle size={18} /> Son Denetim Kayıtları
@@ -363,6 +429,12 @@ export default function ExecutiveCockpitPage() {
             <style>{`
             .hover-scale:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
             `}</style>
+            
+            {/* Receipt Modal */}
+            <TransactionReceipt 
+                transaction={selectedTx} 
+                onPreviewClose={() => setSelectedTx(null)} 
+            />
         </div>
     );
 }

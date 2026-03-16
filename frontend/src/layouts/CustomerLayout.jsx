@@ -1,131 +1,213 @@
-import { useState, useEffect } from "react";
-import { Outlet, Link, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useEffect, useMemo, useState } from "react";
+import { Link, NavLink, Outlet } from "react-router-dom";
+import {
+    ArrowLeftRight,
+    BookOpen,
+    CreditCard,
+    FileCheck,
+    HandCoins,
+    Headphones,
+    History,
+    LayoutDashboard,
+    LogOut,
+    Menu,
+    MessageSquare,
+    Moon,
+    QrCode,
+    Shield,
+    Sun,
+    UserRound,
+    Wallet,
+    X,
+    TrendingUp
+} from "lucide-react";
 import NotificationBell from "../components/NotificationBell";
 import MobileBottomNav from "../components/MobileBottomNav";
-import {
-    LayoutDashboard, CreditCard, ArrowLeftRight,
-    LogOut, User, Settings, Moon, Sun, MessageSquare, Menu,
-    Receipt, Lock, Target, TrendingUp, BarChart3, Shield,
-    FileCheck, History, Headphones, HandCoins, QrCode, BookOpen
-} from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
+const primaryLinks = [
+    { to: "/customer/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { to: "/customer/transfer", label: "Transfer", icon: ArrowLeftRight },
+    { to: "/customer/investments", label: "Yatırım", icon: TrendingUp },
+    { to: "/customer/cards", label: "Cards", icon: CreditCard },
+    { to: "/customer/history", label: "History", icon: History },
+    { to: "/customer/profile", label: "Profile", icon: UserRound },
+];
+
+const drawerLinks = [
+    { to: "/customer/accounts", label: "Hesaplar", icon: Wallet },
+    { to: "/customer/easy-address", label: "Kolay Adres", icon: BookOpen },
+    { to: "/customer/payment-requests", label: "Para iste", icon: HandCoins },
+    { to: "/customer/qr", label: "QR islemleri", icon: QrCode },
+    { to: "/customer/messages", label: "Mesajlar", icon: MessageSquare },
+    { to: "/customer/security", label: "Guvenlik", icon: Shield },
+    { to: "/customer/kyc", label: "KYC", icon: FileCheck },
+    { to: "/customer/contact", label: "Iletisim", icon: Headphones },
+];
 
 export default function CustomerLayout() {
     const { user, logout } = useAuth();
-    const location = useLocation();
-    const [sidebarOpen, setSidebarOpen] = useState(false);
-
-    // Theme state
-    const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [theme, setTheme] = useState(localStorage.getItem("theme") || "dark");
 
     useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
+        document.documentElement.setAttribute("data-theme", theme);
+        localStorage.setItem("theme", theme);
     }, [theme]);
 
+    const displayName = useMemo(() => {
+        if (user?.full_name) return user.full_name;
+        if (user?.email) return user.email.split("@")[0];
+        return "FinBank User";
+    }, [user]);
+
+    const initials = useMemo(() => {
+        const parts = displayName.split(" ").filter(Boolean);
+        return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "FB";
+    }, [displayName]);
+
     const toggleTheme = () => {
-        setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+        setTheme((current) => (current === "dark" ? "light" : "dark"));
     };
 
-    const links = [
-        { to: "/customer/dashboard", label: "Panel", icon: LayoutDashboard },
-        { to: "/customer/accounts", label: "Hesaplar", icon: CreditCard },
-        { to: "/customer/transfer", label: "Transfer", icon: ArrowLeftRight },
-        { to: "/customer/easy-address", label: "Kolay Adres", icon: BookOpen },
-        { to: "/customer/payment-requests", label: "Ödeme İste", icon: HandCoins },
-        { to: "/customer/qr", label: "QR İşlemleri", icon: QrCode },
-        { to: "/customer/history", label: "Geçmiş", icon: History },
-        { to: "/customer/bills", label: "Fatura", icon: Receipt },
-        { to: "/customer/cards", label: "Kredi Kartı", icon: CreditCard },
-        { to: "/customer/ledger", label: "Hareketler", icon: BookOpen },
-        { to: "/customer/goals", label: "Tasarruf", icon: Target },
-        { to: "/customer/exchange", label: "Döviz", icon: TrendingUp },
-        { to: "/customer/spending", label: "Analiz", icon: BarChart3 },
-        { to: "/customer/messages", label: "Mesajlar", icon: MessageSquare },
-        { to: "/customer/security", label: "Güvenlik", icon: Shield },
-        { to: "/customer/kyc", label: "Kimlik (KYC)", icon: FileCheck },
-        { to: "/customer/profile", label: "Profil", icon: User },
-        { to: "/customer/contact", label: "İletişim", icon: Headphones },
-    ];
-
-    const isActive = (path) => location.pathname === path;
-
     return (
-        <div className="layout-wrapper layout-customer">
-            {/* Overlay for mobile */}
+        <div className="min-h-screen pb-24 md:pb-0">
+            <header className="bank-topbar">
+                <div className="bank-page flex items-center justify-between gap-4 px-4 py-4 lg:px-6">
+                    <div className="flex items-center gap-3 lg:gap-5">
+                        <button
+                            type="button"
+                            onClick={() => setDrawerOpen(true)}
+                            className="bank-icon-button lg:hidden"
+                            aria-label="Menüyü aç"
+                        >
+                            <Menu size={20} />
+                        </button>
+
+                        <Link to="/customer/dashboard" className="bank-brand">
+                            <span className="bank-logo">
+                                <Wallet size={18} />
+                            </span>
+                            <span className="bank-brand-text">FinBank</span>
+                        </Link>
+
+                        <nav className="hidden lg:flex items-center gap-1">
+                            {primaryLinks.map((link) => (
+                                <NavLink
+                                    key={link.to}
+                                    to={link.to}
+                                    className={({ isActive }) => `bank-nav-link ${isActive ? "active" : ""}`}
+                                >
+                                    {link.label}
+                                </NavLink>
+                            ))}
+                        </nav>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setDrawerOpen(true)}
+                            className="bank-secondary-btn hidden lg:inline-flex !min-h-[2.7rem] !px-4"
+                        >
+                            <Menu size={16} />
+                            Services
+                        </button>
+                        <NotificationBell />
+                        <button type="button" onClick={toggleTheme} className="bank-icon-button" aria-label="Tema değiştir">
+                            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+                        </button>
+                        <div className="bank-user-pill hidden sm:flex">
+                            <div className="text-right">
+                                <p className="text-xs font-bold text-[var(--text-primary)]">{displayName}</p>
+                                <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--text-secondary)]">
+                                    Premium Member
+                                </p>
+                            </div>
+                            <div className="bank-avatar">{initials}</div>
+                        </div>
+                        <button type="button" onClick={logout} className="bank-secondary-btn hidden xl:inline-flex !min-h-[2.7rem] !px-4">
+                            <LogOut size={16} />
+                            Cikis
+                        </button>
+                    </div>
+                </div>
+            </header>
+
             <div
-                className={`sidebar-overlay ${sidebarOpen ? 'mobile-open' : ''}`}
-                onClick={() => setSidebarOpen(false)}
+                className={`fixed inset-0 z-[60] bg-slate-950/50 backdrop-blur-sm transition ${drawerOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
+                onClick={() => setDrawerOpen(false)}
             />
 
-            <aside className={`sidebar ${sidebarOpen ? 'mobile-open' : ''}`} role="navigation" aria-label="Müşteri menüsü">
-                <div className="sidebar-brand">
-                    <div className="sidebar-brand-icon">FB</div>
-                    <span className="sidebar-brand-text">FinBank</span>
+            <aside
+                className={`fixed inset-y-0 left-0 z-[70] w-[22rem] max-w-[calc(100vw-1.5rem)] border-r border-white/10 bg-[#060913]/95 px-5 py-5 shadow-2xl backdrop-blur-2xl transition duration-300 ${drawerOpen ? "translate-x-0" : "-translate-x-full"}`}
+                aria-label="Müşteri menüsü"
+            >
+                <div className="mb-6 flex items-center justify-between">
+                    <Link to="/customer/dashboard" className="bank-brand" onClick={() => setDrawerOpen(false)}>
+                        <span className="bank-logo">
+                            <Wallet size={18} />
+                        </span>
+                        <span className="bank-brand-text">FinBank</span>
+                    </Link>
+                    <button type="button" className="bank-icon-button" onClick={() => setDrawerOpen(false)} aria-label="Menüyü kapat">
+                        <X size={18} />
+                    </button>
                 </div>
 
-                <nav className="sidebar-nav">
-                    {links.map((link) => (
-                        <Link
-                            key={link.to}
-                            to={link.to}
-                            className={`sidebar-link ${isActive(link.to) ? "active" : ""}`}
-                            aria-current={isActive(link.to) ? "page" : undefined}
-                        >
-                            <link.icon size={18} />
-                            <span>{link.label}</span>
-                        </Link>
-                    ))}
-                </nav>
-
-                <div className="sidebar-footer">
-                    <button className="sidebar-link" onClick={toggleTheme} aria-label="Tema Değiştir">
-                        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                        <span>{theme === 'dark' ? 'Açık Tema' : 'Koyu Tema'}</span>
-                    </button>
-                    <div className="sidebar-user">
-                        <User size={16} />
-                        <div className="sidebar-user-info">
-                            <span className="sidebar-role-badge customer">Müşteri</span>
-                            <span className="sidebar-email">{user?.email}</span>
+                <div className="mb-6 rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+                    <div className="mb-4 flex items-center gap-3">
+                        <div className="bank-avatar">{initials}</div>
+                        <div>
+                            <p className="font-display text-lg font-bold text-white">{displayName}</p>
+                            <p className="text-xs uppercase tracking-[0.24em] text-[var(--text-secondary)]">Customer Workspace</p>
                         </div>
                     </div>
-                    <button className="btn-logout" onClick={logout} aria-label="Çıkış yap">
-                        <LogOut size={16} /> Çıkış
+                    <div className="bank-chip bg-primary/10 text-primary">Premium</div>
+                </div>
+
+                <div className="mb-3 px-1">
+                    <p className="bank-section-label">Core</p>
+                </div>
+                <div className="grid gap-2">
+                    {[...primaryLinks, ...drawerLinks].map((link) => {
+                        const Icon = link.icon;
+                        return (
+                            <NavLink
+                                key={link.to}
+                                to={link.to}
+                                onClick={() => setDrawerOpen(false)}
+                                className={({ isActive }) => `flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold transition ${isActive ? "border-primary/30 bg-primary/12 text-white" : "border-white/5 bg-white/[0.03] text-[var(--text-secondary)] hover:border-white/10 hover:bg-white/[0.05] hover:text-white"}`}
+                            >
+                                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/5 text-primary">
+                                    <Icon size={18} />
+                                </span>
+                                <span>{link.label}</span>
+                            </NavLink>
+                        );
+                    })}
+                </div>
+
+                <div className="mt-6 grid gap-3 rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 text-sm text-[var(--text-secondary)]">
+                    <p className="bank-section-label">Session</p>
+                    <button type="button" onClick={toggleTheme} className="bank-secondary-btn w-full justify-start !min-h-[3rem] !rounded-2xl !px-4">
+                        {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+                        {theme === "dark" ? "Acik tema" : "Koyu tema"}
+                    </button>
+                    <button type="button" onClick={logout} className="bank-secondary-btn w-full justify-start !min-h-[3rem] !rounded-2xl !px-4">
+                        <LogOut size={16} />
+                        Guvenli cikis
                     </button>
                 </div>
             </aside>
 
-            <MobileBottomNav />
-
-            <main className="layout-main">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }} className="mobile-only-header">
-                    <button
-                        onClick={() => setSidebarOpen(true)}
-                        style={{
-                            background: 'var(--bg-card)', border: 'none', borderRadius: '50%',
-                            width: 44, height: 44, display: 'flex', alignItems: 'center',
-                            justifyContent: 'center', color: 'var(--text-primary)',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                        }}
-                    >
-                        <Menu size={20} />
-                    </button>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        <NotificationBell />
-                        <button onClick={toggleTheme} style={{
-                            background: 'var(--bg-card)', border: 'none', borderRadius: '50%',
-                            width: 44, height: 44, display: 'flex', alignItems: 'center',
-                            justifyContent: 'center', color: 'var(--text-primary)',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                        }}>
-                            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-                        </button>
-                    </div>
+            <main className="bank-page px-4 py-6 lg:px-6 lg:py-8">
+                <div className="animate-[bankFadeUp_.45s_ease]">
+                    <Outlet />
                 </div>
-                <Outlet />
             </main>
+
+            <MobileBottomNav />
         </div>
     );
 }

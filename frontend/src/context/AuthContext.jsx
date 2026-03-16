@@ -35,9 +35,13 @@ export function AuthProvider({ children }) {
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(userData));
         setUser(userData);
+        // WebSocket bağlantısını tetikle
+        window.dispatchEvent(new CustomEvent("finbank-auth-change", { detail: { action: "login" } }));
     };
 
     const logout = () => {
+        // WebSocket bağlantısını kes
+        window.dispatchEvent(new CustomEvent("finbank-auth-change", { detail: { action: "logout" } }));
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         setUser(null);

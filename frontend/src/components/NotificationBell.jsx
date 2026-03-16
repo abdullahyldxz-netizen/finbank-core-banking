@@ -1,137 +1,143 @@
-import { useState, useEffect, useCallback } from "react";
-import { Bell, X, Check, CheckCheck } from "lucide-react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { Bell, CheckCheck, X } from "lucide-react";
 import { notificationApi } from "../services/api";
 
 export default function NotificationBell() {
     const [open, setOpen] = useState(false);
-    const [notifs, setNotifs] = useState([]);
+    const [notifications, setNotifications] = useState([]);
     const [unread, setUnread] = useState(0);
 
     const fetchUnread = useCallback(async () => {
         try {
-            const res = await notificationApi.unreadCount();
-            setUnread(res.data.count);
-        } catch { /* */ }
+            const response = await notificationApi.unreadCount();
+            setUnread(Number(response.data?.count || 0));
+        } catch {
+            // ignore
+        }
     }, []);
 
-    const fetchNotifs = useCallback(async () => {
+    const fetchNotifications = useCallback(async () => {
         try {
-            const res = await notificationApi.list();
-            setNotifs(res.data);
-        } catch { /* */ }
+            const response = await notificationApi.list();
+            setNotifications(Array.isArray(response.data) ? response.data : []);
+        } catch {
+            // ignore
+        }
     }, []);
 
     useEffect(() => {
         fetchUnread();
-        const interval = setInterval(fetchUnread, 30000);
-        return () => clearInterval(interval);
+        const timer = setInterval(fetchUnread, 30000);
+        return () => clearInterval(timer);
     }, [fetchUnread]);
 
-    const handleOpen = () => {
-        setOpen(!open);
-        if (!open) fetchNotifs();
+    const togglePanel = () => {
+        const next = !open;
+        setOpen(next);
+        if (next) fetchNotifications();
     };
 
     const markAllRead = async () => {
-        try { await notificationApi.markAllRead(); setUnread(0); setNotifs((n) => n.map((x) => ({ ...x, read: true }))); }
-        catch { /* */ }
+        try {
+            await notificationApi.markAllRead();
+            setUnread(0);
+            setNotifications((current) => current.map((item) => ({ ...item, read: true })));
+        } catch {
+            // ignore
+        }
     };
 
     const markRead = async (id) => {
         try {
             await notificationApi.markRead(id);
-            setUnread((u) => Math.max(0, u - 1));
-            setNotifs((n) => n.map((x) => x.notification_id === id ? { ...x, read: true } : x));
-        } catch { /* */ }
+            setUnread((current) => Math.max(0, current - 1));
+            setNotifications((current) => current.map((item) => (
+                item.notification_id === id ? { ...item, read: true } : item
+            )));
+        } catch {
+            // ignore
+        }
     };
 
-    const formatTime = (d) => {
-        const diff = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
-        if (diff < 60) return "Az önce";
-        if (diff < 3600) return `${Math.floor(diff / 60)} dk`;
-        if (diff < 86400) return `${Math.floor(diff / 3600)} sa`;
-        return `${Math.floor(diff / 86400)} gün`;
+    const unreadLabel = useMemo(() => {
+        if (unread <= 0) return null;
+        return unread > 9 ? "9+" : String(unread);
+    }, [unread]);
+
+    const formatRelative = (value) => {
+        const diffSeconds = Math.floor((Date.now() - new Date(value).getTime()) / 1000);
+        if (diffSeconds < 60) return "Az once";
+        if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)} dk`;
+        if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)} sa`;
+        return `${Math.floor(diffSeconds / 86400)} gun`;
     };
 
     return (
-        <div style={{ position: "relative" }}>
-            <button
-                onClick={handleOpen}
-                style={{
-                    position: "relative", background: "var(--bg-card)", border: "1px solid var(--border-color)",
-                    borderRadius: 12, width: 42, height: 42, display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "pointer", color: "var(--text-primary)", transition: "all 0.2s",
-                }}
-                aria-label={`Bildirimler (${unread} okunmamış)`}
-            >
+        <div className="relative">
+            <button type="button" onClick={togglePanel} className="bank-icon-button relative" aria-label="Bildirimler">
                 <Bell size={18} />
-                {unread > 0 && (
-                    <span style={{
-                        position: "absolute", top: -4, right: -4,
-                        background: "#ef4444", color: "#fff", fontSize: 10, fontWeight: 700,
-                        width: 18, height: 18, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                        border: "2px solid var(--bg-primary)",
-                    }}>{unread > 9 ? "9+" : unread}</span>
-                )}
+                {unreadLabel ? (
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full border-2 border-[#060913] bg-rose-500 px-1 text-[10px] font-bold text-white">
+                        {unreadLabel}
+                    </span>
+                ) : null}
             </button>
 
-            {open && (
-                <div style={{
-                    position: "absolute", top: 50, right: 0, width: 340, maxHeight: 420,
-                    background: "var(--bg-card)", border: "1px solid var(--border-color)",
-                    borderRadius: 16, boxShadow: "0 12px 40px rgba(0,0,0,0.3)", zIndex: 9998,
-                    overflow: "hidden", display: "flex", flexDirection: "column",
-                }}>
-                    {/* Header */}
-                    <div style={{
-                        padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center",
-                        borderBottom: "1px solid var(--border-color)",
-                    }}>
-                        <span style={{ fontWeight: 700, fontSize: 15 }}>🔔 Bildirimler</span>
-                        <div style={{ display: "flex", gap: 6 }}>
-                            {unread > 0 && (
-                                <button onClick={markAllRead} style={{
-                                    background: "rgba(99,102,241,0.1)", border: "none", cursor: "pointer",
-                                    color: "#6366f1", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 600,
-                                    display: "flex", alignItems: "center", gap: 4,
-                                }}>
-                                    <CheckCheck size={14} /> Tümünü Oku
+            {open ? (
+                <div className="absolute right-0 top-14 z-[80] w-[22rem] overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#0a1020]/95 shadow-2xl backdrop-blur-2xl">
+                    <div className="flex items-center justify-between border-b border-white/10 px-4 py-4">
+                        <div>
+                            <p className="font-display text-lg font-bold text-white">Bildirimler</p>
+                            <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Realtime inbox</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {unread > 0 ? (
+                                <button
+                                    type="button"
+                                    onClick={markAllRead}
+                                    className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-primary"
+                                >
+                                    <CheckCheck size={12} />
+                                    Tumunu oku
                                 </button>
-                            )}
-                            <button onClick={() => setOpen(false)} style={{
-                                background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)",
-                            }}><X size={16} /></button>
+                            ) : null}
+                            <button type="button" onClick={() => setOpen(false)} className="bank-icon-button !h-9 !w-9 !rounded-full">
+                                <X size={15} />
+                            </button>
                         </div>
                     </div>
 
-                    {/* List */}
-                    <div style={{ overflowY: "auto", flex: 1 }}>
-                        {notifs.length === 0 ? (
-                            <p style={{ textAlign: "center", color: "var(--text-secondary)", padding: 40, fontSize: 13 }}>
-                                Bildirim yok 🎉
-                            </p>
-                        ) : notifs.map((n) => (
-                            <div
-                                key={n.notification_id}
-                                onClick={() => !n.read && markRead(n.notification_id)}
-                                style={{
-                                    padding: "12px 16px", borderBottom: "1px solid var(--border-color)",
-                                    background: n.read ? "transparent" : "rgba(99,102,241,0.05)",
-                                    cursor: n.read ? "default" : "pointer", transition: "background 0.2s",
-                                }}
-                            >
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                                    <div style={{ flex: 1 }}>
-                                        <p style={{ fontSize: 13, fontWeight: n.read ? 400 : 600, lineHeight: 1.5 }}>{n.message}</p>
-                                        <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{formatTime(n.created_at)}</span>
-                                    </div>
-                                    {!n.read && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#6366f1", flexShrink: 0, marginTop: 6 }} />}
-                                </div>
+                    <div className="max-h-[24rem] overflow-y-auto">
+                        {notifications.length === 0 ? (
+                            <div className="px-6 py-12 text-center text-sm text-[var(--text-secondary)]">
+                                Bildirim yok. Yeni hareketler burada gorunecek.
                             </div>
+                        ) : notifications.map((item) => (
+                            <button
+                                key={item.notification_id}
+                                type="button"
+                                onClick={() => {
+                                    if (!item.read) markRead(item.notification_id);
+                                }}
+                                className={`flex w-full items-start gap-3 border-b border-white/5 px-4 py-4 text-left transition ${item.read ? "bg-transparent" : "bg-primary/5 hover:bg-primary/10"}`}
+                            >
+                                <span className={`mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${item.read ? "bg-white/5 text-slate-400" : "bg-primary/15 text-primary"}`}>
+                                    <Bell size={16} />
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                    <span className={`block text-sm leading-6 ${item.read ? "font-medium text-[var(--text-secondary)]" : "font-semibold text-white"}`}>
+                                        {item.message}
+                                    </span>
+                                    <span className="mt-1 block text-[11px] uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                                        {formatRelative(item.created_at)}
+                                    </span>
+                                </span>
+                                {!item.read ? <span className="mt-2 h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_12px_rgba(59,130,246,0.7)]" /> : null}
+                            </button>
                         ))}
                     </div>
                 </div>
-            )}
+            ) : null}
         </div>
     );
 }

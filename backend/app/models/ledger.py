@@ -17,6 +17,19 @@ class LedgerCategory(str, Enum):
     WITHDRAWAL = "WITHDRAWAL"
     TRANSFER_IN = "TRANSFER_IN"
     TRANSFER_OUT = "TRANSFER_OUT"
+    COMMISSION = "COMMISSION"   
+
+
+class CommissionEntry(BaseModel):
+    """Internal model for bank commission tracking."""
+    id: str
+    transaction_ref: str
+    type: str # e.g. "EFT_FEE", "CASH_ADVANCE_FEE"
+    amount: float
+    description: Optional[str] = None
+    created_at: datetime
+    created_by: str
+
 
 
 class LedgerEntryResponse(BaseModel):

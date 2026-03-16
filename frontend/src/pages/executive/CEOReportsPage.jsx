@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, TrendingDown, Users, Activity, BarChart3, DollarSign, FileText, Loader2 } from "lucide-react";
+import { TrendingUp, TrendingDown, Users, Activity, BarChart3, DollarSign, FileText, Loader2, Printer } from "lucide-react";
 import { analyticsApi } from "../../services/api";
 
 export default function CEOReportsPage() {
@@ -33,10 +33,22 @@ export default function CEOReportsPage() {
     const months = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
     return (
-        <div style={{ padding: "24px", maxWidth: 1000, margin: "0 auto" }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24, display: "flex", alignItems: "center", gap: 10 }}>
-                <FileText size={28} color="#d4af37" /> CEO Raporları
-            </h1>
+        <div className="report-container" style={{ padding: "24px", maxWidth: 1000, margin: "0 auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 16 }}>
+                <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
+                    <FileText size={28} color="#d4af37" /> CEO Raporları
+                </h1>
+                <button
+                    onClick={() => window.print()}
+                    style={{
+                        padding: "10px 16px", borderRadius: 12, background: "var(--primary-color)", color: "#fff",
+                        border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+                        fontWeight: 600, fontSize: 13, transition: "background 0.2s"
+                    }}
+                >
+                    <Printer size={16} /> Raporu Yazdır / PDF İndir
+                </button>
+            </div>
 
             {/* Period Selector */}
             <div style={{ display: "flex", gap: 10, marginBottom: 28, flexWrap: "wrap" }}>
@@ -131,7 +143,15 @@ export default function CEOReportsPage() {
                     </div>
                 </div>
             )}
-            <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+            <style>{`
+            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            @media print {
+                body * { visibility: hidden; }
+                .report-container, .report-container * { visibility: visible; }
+                .report-container { position: absolute; left: 0; top: 0; width: 100%; }
+                button, select { display: none !important; }
+            }
+            `}</style>
         </div>
     );
 }

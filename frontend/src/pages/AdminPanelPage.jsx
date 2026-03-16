@@ -256,7 +256,7 @@ export default function AdminPanelPage() {
                         <QueueCard icon={<UserX size={16} />} label="Pasif kullanici" value={inactiveUsers} tone="#64748b" />
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 16 }}>
+                    <div className="grid-split">
                         <Panel title="Son kullanicilar" subtitle="Yeni kayitlari hizli inceleyin">
                             {users.length === 0 ? <Empty message="Kullanici kaydi yok." /> : users.map((user) => (
                                 <div key={user.user_id} style={rowStyle}>
@@ -358,7 +358,7 @@ export default function AdminPanelPage() {
             ) : null}
 
             {!loading && tab === "messages" ? (
-                <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 16 }}>
+                <div className="grid-split">
                     <Panel title="Mesaj merkezi" subtitle="Tum acik ve yanitlanmis mesajlar">
                         {messages.length === 0 ? <Empty message="Mesaj yok." /> : messages.map((message) => (
                             <div key={message.message_id} style={messageStyle(message.status === "open")}>

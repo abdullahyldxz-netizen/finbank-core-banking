@@ -11,7 +11,8 @@ import sys
 import uuid
 
 import asyncio
-from fastapi import Depends, FastAPI, HTTPException
+import httpx
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -27,6 +28,7 @@ STAFF_ROLES = {"employee", "admin", "ceo"}
 CARD_INTEREST_RATE = 3.29
 CARD_MIN_PAYMENT_RATIO = 0.20
 MOCK_RATES = {"USD": 32.50, "EUR": 35.20, "GBP": 41.10, "TRY": 1.0}
+NOTIFICATION_SERVICE_URL = os.environ.get("NOTIFICATION_SERVICE_URL", "http://notification-service:8003")
 
 
 class CustomerCreateRequest(BaseModel):
@@ -995,8 +997,53 @@ async def withdraw(body: WithdrawRequest, current_user=Depends(get_current_user)
     return {"message": "Para cekildi.", "transaction_ref": txn_ref, "amount": body.amount}
 
 
+async def _notify_transfer_ws(
+    db,
+    sender_user_id: str,
+    receiver_user_id: str,
+    amount: float,
+    currency: str,
+    txn_ref: str,
+    description: str,
+    sender_iban: str,
+    receiver_iban: str,
+):
+    """Notification service'e HTTP POST ile transfer bildirimi gönder."""
+    try:
+        # Gönderici ve alıcının müşteri adlarını bul
+        sender_customer = await db.customers.find_one({"user_id": sender_user_id})
+        receiver_customer = await db.customers.find_one({"user_id": receiver_user_id})
+        sender_name = sender_customer.get("full_name", "FinBank Kullanıcısı") if sender_customer else "FinBank Kullanıcısı"
+        receiver_name = receiver_customer.get("full_name", "FinBank Kullanıcısı") if receiver_customer else "FinBank Kullanıcısı"
+
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(
+                f"{NOTIFICATION_SERVICE_URL}/internal/notify/transfer",
+                json={
+                    "sender_user_id": sender_user_id,
+                    "receiver_user_id": receiver_user_id,
+                    "sender_name": sender_name,
+                    "receiver_name": receiver_name,
+                    "amount": amount,
+                    "currency": currency,
+                    "transfer_ref": txn_ref,
+                    "description": description,
+                    "sender_iban": sender_iban,
+                    "receiver_iban": receiver_iban,
+                },
+            )
+    except Exception as e:
+        # Bildirim gönderimi başarısız olsa bile transfer işlemi etkilenmemeli
+        print(f"[WS Notify] Transfer bildirimi gönderilemedi: {e}", file=sys.stderr)
+
+
 @app.post("/transactions/transfer")
-async def transfer(body: TransferRequest, current_user=Depends(get_current_user), db=Depends(get_database)):
+async def transfer(
+    body: TransferRequest,
+    background_tasks: BackgroundTasks,
+    current_user=Depends(get_current_user),
+    db=Depends(get_database),
+):
     ensure_positive_amount(body.amount)
     from_account = await get_account_or_404(db, body.from_account_id)
     ensure_account_access(current_user, from_account, allow_staff=True)
@@ -1045,6 +1092,21 @@ async def transfer(body: TransferRequest, current_user=Depends(get_current_user)
         description,
         credit_metadata,
     )
+
+    # 🔔 WebSocket bildirimi: arka planda gönder (transfer'i bloke etmez)
+    background_tasks.add_task(
+        _notify_transfer_ws,
+        db,
+        current_user["user_id"],
+        target_account["user_id"],
+        body.amount,
+        from_account.get("currency", "TRY"),
+        txn_ref,
+        description,
+        from_account.get("iban", ""),
+        target_account.get("iban", ""),
+    )
+
     return {
         "message": "Transfer basarili.",
         "transaction_ref": txn_ref,

@@ -20,7 +20,7 @@ from app.core.config import settings
 from app.core.database import connect_to_mongo, close_mongo_connection
 from app.core.logging import configure_logging
 from app.api.v1 import accounts, transactions, auth, employee, admin, customers, bills, cards, \
-    exchange, ledger, audit, approvals, messages, easy_addresses, payment_requests, auto_bills, goals, analytics
+    exchange, ledger, audit, approvals, messages, easy_addresses, payment_requests, auto_bills, goals, analytics, market
 
 # ── Configure Logging ──
 configure_logging()
@@ -133,6 +133,7 @@ app.include_router(payment_requests.router, prefix="/api/v1/payment-requests", t
 app.include_router(auto_bills.router, prefix="/api/v1/auto-bills", tags=["Auto Bills"])
 app.include_router(goals.router, prefix=API_PREFIX)
 app.include_router(analytics.router, prefix=API_PREFIX)
+app.include_router(market.router, prefix=API_PREFIX)
 
 
 # ── Root ──

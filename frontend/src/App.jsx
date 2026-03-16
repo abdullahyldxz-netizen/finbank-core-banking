@@ -24,6 +24,7 @@ import CustomerSupportPage from './pages/customer/CustomerSupportPage';
 import EasyAddressPage from './pages/customer/EasyAddressPage';
 import PaymentRequestsPage from "./pages/customer/PaymentRequestsPage";
 import QRPage from "./pages/customer/QRPage";
+import InvestmentsPage from "./pages/customer/InvestmentsPage";
 
 // Role Specific Pages
 import DashboardPage from "./pages/DashboardPage";
@@ -67,6 +68,11 @@ export default function App() {
                     <Route path="/customer/dashboard" element={
                         <ProtectedRoute allowedRoles={['customer']}>
                             <DashboardPage />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/customer/investments" element={
+                        <ProtectedRoute allowedRoles={['customer']}>
+                            <InvestmentsPage />
                         </ProtectedRoute>
                     } />
                     <Route path="/customer/accounts" element={
