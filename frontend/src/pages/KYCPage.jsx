@@ -53,20 +53,20 @@ export default function KYCPage() {
 
     const handleSubmit = async () => {
         if (!form.first_name || !form.last_name || !form.national_id || !form.phone) {
-            toast.error("Lütfen tüm zorunlu alanları doldurun.");
+            toast.error("Please fill in all required fields.");
             return;
         }
         if (form.national_id.length !== 11) {
-            toast.error("TC Kimlik No 11 haneli olmalıdır.");
+            toast.error("National ID must be 11 digits.");
             return;
         }
         setSubmitting(true);
         try {
             await customerApi.submitKYC(form);
-            toast.success("KYC başvurunuz gönderildi! ✅");
+            toast.success("Your KYC application has been submitted! ✅");
             setStatus("pending");
         } catch (err) {
-            toast.error(err.response?.data?.detail || "Başvuru gönderilemedi.");
+            toast.error(err.response?.data?.detail || "Application could not be sent.");
         }
         setSubmitting(false);
     };
@@ -80,9 +80,9 @@ export default function KYCPage() {
     }
 
     const statusConfig = {
-        approved: { icon: <CheckCircle2 size={48} />, color: "#22c55e", title: "KYC Onaylandı ✅", desc: "Kimlik doğrulamanız başarıyla tamamlandı. Tüm banka hizmetlerine erişebilirsiniz." },
-        pending: { icon: <Clock size={48} />, color: "#f59e0b", title: "Başvuru İnceleniyor ⏳", desc: "KYC başvurunuz inceleme sürecindedir. Bu süre genellikle 1-3 iş günü sürer." },
-        rejected: { icon: <XCircle size={48} />, color: "#ef4444", title: "Başvuru Reddedildi ❌", desc: "Kimlik doğrulama başvurunuz reddedildi. Lütfen bilgilerinizi kontrol ederek tekrar başvurun." },
+        approved: { icon: <CheckCircle2 size={48} />, color: "#22c55e", title: "KYC Approved ✅", desc: "Your identity verification has been successfully completed. You can access all banking services." },
+        pending: { icon: <Clock size={48} />, color: "#f59e0b", title: "Application Under Review ⏳", desc: "Your KYC application is in the review process. This usually takes 1-3 business days." },
+        rejected: { icon: <XCircle size={48} />, color: "#ef4444", title: "Application Rejected ❌", desc: "Your identity verification application was rejected. Please check your information and apply again." },
     };
 
     if (status === "approved" || status === "pending") {
@@ -102,18 +102,18 @@ export default function KYCPage() {
     }
 
     const steps = [
-        { num: 1, label: "Kişisel Bilgiler" },
-        { num: 2, label: "Kimlik Belgeleri" },
-        { num: 3, label: "Onay" },
+        { num: 1, label: "Personal Info" },
+        { num: 2, label: "ID Documents" },
+        { num: 3, label: "Confirmation" },
     ];
 
     return (
         <div style={{ padding: 24, maxWidth: 650, margin: "0 auto" }}>
             <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
-                <FileCheck size={28} color="#6366f1" /> Kimlik Doğrulama (KYC)
+                <FileCheck size={28} color="#6366f1" /> Identity Verification (KYC)
             </h1>
             <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 24 }}>
-                Bankacılık hizmetlerimizden yararlanmak için kimlik doğrulama sürecini tamamlayın.
+                Complete the identification process to benefit from our banking services.
             </p>
 
             {/* Stepper */}
@@ -149,67 +149,67 @@ export default function KYCPage() {
                 {/* Step 1 */}
                 {step === 1 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                        <h3 style={{ fontWeight: 600, marginBottom: 4 }}>👤 Kişisel Bilgiler</h3>
+                        <h3 style={{ fontWeight: 600, marginBottom: 4 }}>👤 Personal Info</h3>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                             <div>
-                                <label style={labelStyle}>Ad *</label>
+                                <label style={labelStyle}>First Name *</label>
                                 <input name="first_name" value={form.first_name} onChange={handleChange}
-                                    placeholder="Adınız" style={inputStyle} />
+                                    placeholder="Your First Name" style={inputStyle} />
                             </div>
                             <div>
-                                <label style={labelStyle}>Soyad *</label>
+                                <label style={labelStyle}>Last Name *</label>
                                 <input name="last_name" value={form.last_name} onChange={handleChange}
-                                    placeholder="Soyadınız" style={inputStyle} />
+                                    placeholder="Your Last Name" style={inputStyle} />
                             </div>
                         </div>
                         <div>
-                            <label style={labelStyle}>TC Kimlik No *</label>
+                            <label style={labelStyle}>National ID *</label>
                             <input name="national_id" value={form.national_id} onChange={handleChange}
-                                placeholder="11 haneli TC No" maxLength={11} style={inputStyle} />
+                                placeholder="11-digit ID number" maxLength={11} style={inputStyle} />
                         </div>
                         <div>
-                            <label style={labelStyle}>Telefon *</label>
+                            <label style={labelStyle}>Phone *</label>
                             <input name="phone" value={form.phone} onChange={handleChange}
                                 placeholder="+90 5XX XXX XXXX" style={inputStyle} />
                         </div>
                         <div>
-                            <label style={labelStyle}>Doğum Tarihi</label>
+                            <label style={labelStyle}>Date of Birth</label>
                             <input name="birth_date" type="date" value={form.birth_date} onChange={handleChange} style={inputStyle} />
                         </div>
                         <div>
-                            <label style={labelStyle}>Adres</label>
+                            <label style={labelStyle}>Address</label>
                             <textarea name="address" value={form.address} onChange={handleChange}
-                                placeholder="Açık adresiniz" rows={3} style={{ ...inputStyle, resize: "vertical" }} />
+                                placeholder="Your full address" rows={3} style={{ ...inputStyle, resize: "vertical" }} />
                         </div>
                         <button onClick={() => {
                             if (!form.first_name || !form.last_name || !form.national_id || !form.phone) {
-                                toast.error("Zorunlu alanları doldurun."); return;
+                                toast.error("Please fill in required fields."); return;
                             }
                             setStep(2);
-                        }} style={primaryBtn}>Devam →</button>
+                        }} style={primaryBtn}>Continue →</button>
                     </div>
                 )}
 
                 {/* Step 2 */}
                 {step === 2 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                        <h3 style={{ fontWeight: 600, marginBottom: 4 }}>📄 Kimlik Belgeleri</h3>
+                        <h3 style={{ fontWeight: 600, marginBottom: 4 }}>📄 ID Documents</h3>
                         <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                            Kimlik ön ve arka yüz fotoğraflarının URL'lerini girin. (Supabase Storage veya başka bir hizmete yükleyip URL'sini yapıştırın.)
+                            Enter the URLs for the front and back photos of your ID.
                         </p>
                         <div>
-                            <label style={labelStyle}>Kimlik Ön Yüz URL</label>
+                            <label style={labelStyle}>ID Front URL</label>
                             <input name="id_front_url" value={form.id_front_url} onChange={handleChange}
                                 placeholder="https://..." style={inputStyle} />
                         </div>
                         <div>
-                            <label style={labelStyle}>Kimlik Arka Yüz URL</label>
+                            <label style={labelStyle}>ID Back URL</label>
                             <input name="id_back_url" value={form.id_back_url} onChange={handleChange}
                                 placeholder="https://..." style={inputStyle} />
                         </div>
                         <div style={{ display: "flex", gap: 10 }}>
-                            <button onClick={() => setStep(1)} style={{ ...secondaryBtn }}>← Geri</button>
-                            <button onClick={() => setStep(3)} style={{ ...primaryBtn, flex: 1 }}>Devam →</button>
+                            <button onClick={() => setStep(1)} style={{ ...secondaryBtn }}>← Back</button>
+                            <button onClick={() => setStep(3)} style={{ ...primaryBtn, flex: 1 }}>Continue →</button>
                         </div>
                     </div>
                 )}
@@ -217,16 +217,16 @@ export default function KYCPage() {
                 {/* Step 3: Review */}
                 {step === 3 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                        <h3 style={{ fontWeight: 600, marginBottom: 4 }}>✅ Bilgileri Kontrol Edin</h3>
+                        <h3 style={{ fontWeight: 600, marginBottom: 4 }}>✅ Review Details</h3>
                         <div style={{ background: "var(--bg-secondary)", borderRadius: 14, padding: 16 }}>
                             {[
-                                ["Ad Soyad", `${form.first_name} ${form.last_name}`],
-                                ["TC Kimlik No", form.national_id],
-                                ["Telefon", form.phone],
-                                ["Doğum Tarihi", form.birth_date || "-"],
-                                ["Adres", form.address || "-"],
-                                ["Kimlik Ön Yüz", form.id_front_url ? "✅ Yüklendi" : "❌ Yüklenmedi"],
-                                ["Kimlik Arka Yüz", form.id_back_url ? "✅ Yüklendi" : "❌ Yüklenmedi"],
+                                ["Full Name", `${form.first_name} ${form.last_name}`],
+                                ["National ID", form.national_id],
+                                ["Phone", form.phone],
+                                ["Date of Birth", form.birth_date || "-"],
+                                ["Address", form.address || "-"],
+                                ["ID Front", form.id_front_url ? "✅ Uploaded" : "❌ Not Uploaded"],
+                                ["ID Back", form.id_back_url ? "✅ Uploaded" : "❌ Not Uploaded"],
                             ].map(([label, val]) => (
                                 <div key={label} style={{
                                     display: "flex", justifyContent: "space-between", padding: "8px 0",
@@ -244,14 +244,14 @@ export default function KYCPage() {
                         }}>
                             <AlertCircle size={18} color="#f59e0b" style={{ flexShrink: 0, marginTop: 2 }} />
                             <p style={{ fontSize: 12, color: "#f59e0b", lineHeight: 1.5 }}>
-                                Başvurunuz onaylandıktan sonra bilgileriniz değiştirilemez. Lütfen tüm bilgilerin doğru olduğundan emin olun.
+                                Once your application is approved, your information cannot be changed. Please ensure all details are correct.
                             </p>
                         </div>
 
                         <div style={{ display: "flex", gap: 10 }}>
-                            <button onClick={() => setStep(2)} style={{ ...secondaryBtn }}>← Geri</button>
+                            <button onClick={() => setStep(2)} style={{ ...secondaryBtn }}>← Back</button>
                             <button onClick={handleSubmit} disabled={submitting} style={{ ...primaryBtn, flex: 1 }}>
-                                {submitting ? <><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> Gönderiliyor...</> : "Başvuruyu Gönder 🚀"}
+                                {submitting ? <><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> Submitting...</> : "Submit Application 🚀"}
                             </button>
                         </div>
                     </div>

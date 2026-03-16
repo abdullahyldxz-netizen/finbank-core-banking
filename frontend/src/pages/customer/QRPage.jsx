@@ -38,7 +38,7 @@ export default function QRPage() {
                 setSelectedAccount(activeAccounts[0].id || activeAccounts[0].account_id);
             }
         } catch (error) {
-            toast.error("Hesaplar yüklenirken hata oluştu.");
+            toast.error("Error loading accounts.");
         } finally {
             setLoading(false);
         }
@@ -53,7 +53,7 @@ export default function QRPage() {
         const data = {
             type: "FINBANK_QR",
             alias: targetAcc.iban || targetAcc.account_number,
-            name: user?.name || "Kullanıcı",
+            name: user?.name || "User",
             amount: amount ? Number(amount) : null,
             desc: description
         };
@@ -76,10 +76,10 @@ export default function QRPage() {
                             scanner.clear();
                             setScanResult(parsed);
                         } else {
-                            toast.error("Geçersiz veya desteklenmeyen QR kod.");
+                            toast.error("Invalid or unsupported QR code.");
                         }
                     } catch (e) {
-                        toast.error("QR kod okunamadı.");
+                        toast.error("QR code could not be read.");
                     }
                 },
                 (error) => {
@@ -103,7 +103,7 @@ export default function QRPage() {
             const payload = {
                 from_account_id: selectedAccount,
                 amount: Number(scanResult.amount),
-                description: scanResult.desc ? `QR: ${scanResult.desc}` : "QR ile Ödeme"
+                description: scanResult.desc ? `QR: ${scanResult.desc}` : "Payment via QR"
             };
 
             if (target.toUpperCase().startsWith("TR")) {
@@ -115,12 +115,12 @@ export default function QRPage() {
             }
 
             await transactionApi.transfer(payload);
-            toast.success("Ödeme başarıyla gerçekleşti!");
+            toast.success("Payment successful!");
             setScanResult(null);
             setActiveTab("receive");
             await loadAccounts(); // refresh balance
         } catch (error) {
-            toast.error(error.response?.data?.detail || "Ödeme yapılamadı.");
+            toast.error(error.response?.data?.detail || "Payment failed.");
         } finally {
             setProcessing(false);
         }
@@ -131,8 +131,8 @@ export default function QRPage() {
     return (
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
             <div className="page-header" style={{ marginBottom: 24 }}>
-                <h1>QR İşlemleri</h1>
-                <p>QR kod ile hızlıca ödeme alın veya ödeme yapın.</p>
+                <h1>QR Transactions</h1>
+                <p>Receive or make payments quickly with QR code.</p>
             </div>
 
             <div style={{ display: "flex", gap: 8, background: "var(--bg-secondary)", padding: 6, borderRadius: 16, marginBottom: 24 }}>
@@ -141,14 +141,14 @@ export default function QRPage() {
                     style={tabStyle(activeTab === "receive")}
                 >
                     <QrCode size={18} />
-                    Ödeme Al (QR Üret)
+                    Receive Payment (Generate QR)
                 </button>
                 <button
                     onClick={() => setActiveTab("scan")}
                     style={tabStyle(activeTab === "scan")}
                 >
                     <Scan size={18} />
-                    Ödeme Yap (Tara)
+                    Make Payment (Scan)
                 </button>
             </div>
 
@@ -160,7 +160,7 @@ export default function QRPage() {
 
                     <div style={{ display: "grid", gap: 16 }}>
                         <div>
-                            <label style={labelStyle}>Ödemenin Yansıyacağı Hesap</label>
+                            <label style={labelStyle}>Account to Receive Payment</label>
                             <select
                                 className="form-select"
                                 value={selectedAccount}
@@ -168,14 +168,14 @@ export default function QRPage() {
                             >
                                 {accounts.map(a => (
                                     <option key={a.id || a.account_id} value={a.id || a.account_id}>
-                                        {a.account_number} (Bakiye: {a.balance} TL)
+                                        {a.account_number} (Balance: {a.balance} TL)
                                     </option>
                                 ))}
                             </select>
                         </div>
                         <div style={{ display: "flex", gap: 16 }}>
                             <div style={{ flex: 1 }}>
-                                <label style={labelStyle}>Tutar (Opsiyonel)</label>
+                                <label style={labelStyle}>Amount (Optional)</label>
                                 <input
                                     className="form-input"
                                     type="number" min="0.01" step="0.01"
@@ -186,12 +186,12 @@ export default function QRPage() {
                             </div>
                         </div>
                         <div>
-                            <label style={labelStyle}>Açıklama (Opsiyonel)</label>
+                            <label style={labelStyle}>Description (Optional)</label>
                             <input
                                 className="form-input"
                                 value={description}
                                 onChange={e => setDescription(e.target.value)}
-                                placeholder="Örn: Akşam yemeği"
+                                placeholder="e.g. Dinner"
                             />
                         </div>
                     </div>
@@ -207,20 +207,20 @@ export default function QRPage() {
                     ) : (
                         <div style={{ background: "var(--bg-card)", padding: 24, borderRadius: 24, border: "1px solid var(--border-color)", display: "grid", gap: 20 }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Ödeme Bilgileri</h3>
+                                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Payment Details</h3>
                                 <button onClick={() => setScanResult(null)} style={{ background: "transparent", border: "none", color: "var(--text-secondary)", cursor: "pointer" }}><XCircle size={24} /></button>
                             </div>
-
+ 
                             <div style={{ background: "var(--bg-secondary)", padding: 16, borderRadius: 16 }}>
-                                <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>Alıcı</div>
+                                <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>Recipient</div>
                                 <div style={{ fontSize: 18, fontWeight: 700, margin: "4px 0" }}>{scanResult.name}</div>
-                                <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>Hesap / IBAN: {scanResult.alias}</div>
-                                {scanResult.desc && <div style={{ fontSize: 13, marginTop: 8, fontStyle: "italic" }}>Açıklama: {scanResult.desc}</div>}
+                                <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>Account / IBAN: {scanResult.alias}</div>
+                                {scanResult.desc && <div style={{ fontSize: 13, marginTop: 8, fontStyle: "italic" }}>Description: {scanResult.desc}</div>}
                             </div>
 
                             <form onSubmit={handlePay} style={{ display: "grid", gap: 16 }}>
                                 <div>
-                                    <label style={labelStyle}>Ödenecek Tutar</label>
+                                    <label style={labelStyle}>Amount to Pay</label>
                                     <input
                                         className="form-input"
                                         type="number" min="0.01" step="0.01" required
@@ -232,24 +232,24 @@ export default function QRPage() {
                                 </div>
 
                                 <div>
-                                    <label style={labelStyle}>Gönderilecek Hesap</label>
+                                    <label style={labelStyle}>Account to Send From</label>
                                     <select
                                         className="form-select"
                                         value={selectedAccount}
                                         onChange={e => setSelectedAccount(e.target.value)}
                                         required
                                     >
-                                        <option value="" disabled>Hesap Seçin</option>
+                                        <option value="" disabled>Select Account</option>
                                         {accounts.map(a => (
                                             <option key={a.id || a.account_id} value={a.id || a.account_id}>
-                                                {a.account_number} (Bakiye: {a.balance} TL)
+                                                {a.account_number} (Balance: {a.balance} TL)
                                             </option>
                                         ))}
                                     </select>
                                 </div>
-
+ 
                                 <button type="submit" style={{ ...primaryButtonStyle, marginTop: 8 }} disabled={processing}>
-                                    {processing ? <RefreshCw size={20} style={{ animation: "spin 1s linear infinite" }} /> : <><ArrowRight size={20} /> Ödemeyi Tamamla</>}
+                                    {processing ? <RefreshCw size={20} style={{ animation: "spin 1s linear infinite" }} /> : <><ArrowRight size={20} /> Complete Payment</>}
                                 </button>
                             </form>
                         </div>

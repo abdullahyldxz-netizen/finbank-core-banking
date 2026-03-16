@@ -69,6 +69,35 @@ export default function InvestmentsPage() {
         asset.symbol.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const [searchResults, setSearchResults] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
+
+    const handleSearch = async (e) => {
+        if (e.key !== 'Enter' || !searchTerm.trim()) return;
+        
+        setIsSearching(true);
+        try {
+            const res = await fetch(`/api/v1/market/search?query=${searchTerm}&type=${activeTab === 'stocks' ? 'stock' : activeTab === 'crypto' ? 'crypto' : 'all'}`, {
+                headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setSearchResults(data);
+                if (data.length === 0) toast.error("No assets found for your search.");
+            }
+        } catch (error) {
+            console.error("Search failed", error);
+            toast.error("Search failed.");
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const clearSearch = () => {
+        setSearchTerm("");
+        setSearchResults([]);
+    };
+
     return (
         <div className="mx-auto max-w-5xl space-y-6">
             {/* Header */}
@@ -98,7 +127,7 @@ export default function InvestmentsPage() {
                 ].map((tab) => (
                     <button
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
+                        onClick={() => { setActiveTab(tab.id); setSearchResults([]); }}
                         className={`flex-1 rounded-[1rem] px-4 py-2 text-sm font-semibold transition ${
                             activeTab === tab.id
                                 ? "bg-white/10 text-[var(--text-primary)] shadow-sm"
@@ -114,14 +143,20 @@ export default function InvestmentsPage() {
                 <div className="relative">
                     <input
                         type="text"
-                        placeholder={`Search ${activeTab === 'crypto' ? 'cryptos' : 'stocks'}...`}
+                        placeholder={`Search ${activeTab === 'crypto' ? 'cryptos' : 'stocks'} (Press Enter for global search)...`}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-12 pr-4 text-sm text-[var(--text-primary)] focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50 transition shadow-lg"
+                        onKeyDown={handleSearch}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-12 pr-12 text-sm text-[var(--text-primary)] focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50 transition shadow-lg"
                     />
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
-                        <TrendingUp size={18} />
+                        {isSearching ? <RefreshCcw size={18} className="animate-spin" /> : <TrendingUp size={18} />}
                     </div>
+                    {searchTerm && (
+                        <button onClick={clearSearch} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-white">
+                            <X size={16} />
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -135,10 +170,26 @@ export default function InvestmentsPage() {
                     </div>
                 ) : activeTab === "crypto" ? (
                     <div className="space-y-4">
+                        {searchResults.length > 0 && (
+                            <div className="mb-6">
+                                <h3 className="text-sm font-bold text-primary mb-3 uppercase tracking-wider">Search Results</h3>
+                                <MarketList data={searchResults} formatMoney={formatMoney} onAction={(asset, action) => { setSelectedAsset(asset); setModalAction(action); }} />
+                                <div className="mt-4 border-b border-white/5" />
+                                <h3 className="text-sm font-bold text-[var(--text-secondary)] mt-6 mb-3 uppercase tracking-wider">Market Overview</h3>
+                            </div>
+                        )}
                         <MarketList data={filteredCryptoData} formatMoney={formatMoney} onAction={(asset, action) => { setSelectedAsset(asset); setModalAction(action); }} />
                     </div>
                 ) : activeTab === "stocks" ? (
                     <div className="space-y-4">
+                        {searchResults.length > 0 && (
+                            <div className="mb-6">
+                                <h3 className="text-sm font-bold text-primary mb-3 uppercase tracking-wider">Global Search Results</h3>
+                                <MarketList data={searchResults} formatMoney={formatMoney} onAction={(asset, action) => { setSelectedAsset(asset); setModalAction(action); }} />
+                                <div className="mt-4 border-b border-white/5" />
+                                <h3 className="text-sm font-bold text-[var(--text-secondary)] mt-6 mb-3 uppercase tracking-wider">Tracked Stocks</h3>
+                            </div>
+                        )}
                         <MarketList data={filteredStockData} formatMoney={formatMoney} onAction={(asset, action) => { setSelectedAsset(asset); setModalAction(action); }} />
                     </div>
                 ) : (

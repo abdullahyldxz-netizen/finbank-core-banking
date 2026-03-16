@@ -140,7 +140,7 @@ export default function CustomerLayout() {
             />
 
             <aside
-                className={`fixed inset-y-0 left-0 z-[70] w-[22rem] max-w-[calc(100vw-1.5rem)] border-r border-white/10 bg-[#060913]/95 px-5 py-5 shadow-2xl backdrop-blur-2xl transition duration-300 overflow-y-auto ${drawerOpen ? "translate-x-0" : "-translate-x-full"}`}
+                className={`fixed inset-y-0 left-0 z-[70] w-[22rem] max-w-[calc(100vw-1.5rem)] border-r border-white/10 bg-[#060913]/95 px-5 py-5 shadow-2xl backdrop-blur-2xl transition duration-300 overflow-y-auto custom-scrollbar ${drawerOpen ? "translate-x-0" : "-translate-x-full"}`}
                 aria-label="Customer menu"
             >
                 <div className="mb-6 flex items-center justify-between">

@@ -181,6 +181,67 @@ async def get_stock_prices():
         )
 
 
+@router.get("/search", response_model=List[MarketAsset])
+async def search_market(query: str, type: str = "all"):
+    """Search for stocks (yfinance) or crypto (CoinGecko)."""
+    results = []
+    query = query.strip()
+    if not query:
+        return []
+
+    # 1. Search Stocks
+    if type in ["all", "stock"]:
+        try:
+            # yfinance doesn't have a great search, we try to use it as a symbol first
+            ticker = yf.Ticker(query)
+            # Try to fetch it - fast_info is a good check
+            info = ticker.fast_info
+            if info.last_price:
+                results.append(MarketAsset(
+                    id=query.lower(),
+                    symbol=query.upper(),
+                    name=ticker.info.get("longName", query.upper()),
+                    current_price=float(info.last_price),
+                    price_change_percentage_24h=0.0, # Approximate or skip
+                    market_cap=float(info.market_cap or 0.0),
+                    type="stock"
+                ))
+        except Exception as e:
+            logger.debug("Stock search failed for symbol", query=query, error=str(e))
+
+    # 2. Search Crypto
+    if type in ["all", "crypto"]:
+        try:
+            # CoinGecko Search API
+            search_url = f"https://api.coingecko.com/api/v3/search?query={query}"
+            resp = requests.get(search_url, timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                coins = data.get("coins", [])[:5]  # Limit to top 5 hits
+                if coins:
+                    ids = ",".join([c["id"] for c in coins])
+                    price_url = f"https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies=usd&include_market_cap=true&include_24hr_change=true"
+                    price_resp = requests.get(price_url, timeout=5)
+                    price_data = price_resp.json()
+                    
+                    for c in coins:
+                        cid = c["id"]
+                        if cid in price_data:
+                            results.append(MarketAsset(
+                                id=cid,
+                                symbol=c["symbol"],
+                                name=c["name"],
+                                current_price=price_data[cid].get("usd", 0.0),
+                                price_change_percentage_24h=price_data[cid].get("usd_24h_change", 0.0),
+                                market_cap=price_data[cid].get("usd_market_cap", 0.0),
+                                type="crypto"
+                            ))
+        except Exception as e:
+            logger.error("Crypto search failed", query=query, error=str(e))
+
+    return results
+
+
 @router.get("/portfolio", response_model=List[InvestmentPortfolioEntry])
 async def get_portfolio(
     current_user: dict = Depends(get_current_user),
@@ -263,7 +324,7 @@ async def sell_asset(
     # 1. Fetch current price
     price = await _get_current_asset_price(body.asset_id, body.asset_type)
     if not price:
-        raise HTTPException(status_code=404, detail="Varlık fiyati bulunamadi")
+        raise HTTPException(status_code=404, detail="Asset price not found")
     
     # 2. Calculate Commission (1.5%)
     total_value = body.quantity * price
@@ -301,4 +362,18 @@ async def _get_current_asset_price(asset_id: str, asset_type: str) -> Optional[f
         if asset.id == asset_id or asset.symbol.lower() == asset_id.lower():
             return float(asset.current_price)
     
+    # Not in lists? Try to fetch specifically
+    try:
+        if asset_type == "crypto":
+            url = f"https://api.coingecko.com/api/v3/simple/price?ids={asset_id}&vs_currencies=usd"
+            r = requests.get(url, timeout=5)
+            d = r.json()
+            if asset_id in d:
+                return float(d[asset_id].get("usd", 0.0))
+        else:
+            t = yf.Ticker(asset_id)
+            return float(t.fast_info.last_price)
+    except:
+        pass
+
     return None

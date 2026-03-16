@@ -380,7 +380,9 @@ export default function CardsPage() {
                                                 <div style={{ position: "absolute", left: "50%", top: 0, width: 1, height: "100%", background: "rgba(0,0,0,0.2)" }} />
                                             </div>
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" /><path d="M16 8h.01" /><path d="M16 16h.01" /><path d="M8 8h.01" /><path d="M8 16h.01" /><path d="M12 12h.01" /></svg>
-                                                                         <div style={{ marginBottom: 28 }}>
+                                        </div>
+
+                                        <div style={{ marginBottom: 20 }}>
                                             <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1.5 }}>Card number</div>
                                             <div style={{ fontFamily: "monospace", fontSize: 24, fontWeight: 700, letterSpacing: 3, marginTop: 8 }}>
                                                 {showSensitive ? formatCardNumber(selectedCard.card_number) : maskCardNumber(selectedCard.card_number)}
@@ -392,7 +394,6 @@ export default function CardsPage() {
                                                 <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 1.5 }}>Cardholder</div>
                                                 <div style={{ fontWeight: 700, marginTop: 6, fontSize: 15 }}>{selectedCard.cardholder_name || selectedCard.holder_name || "Customer"}</div>
                                             </div>
-         </div>
                                             <div style={{ textAlign: "right", paddingRight: 8 }}>
                                                 <button type="button" onClick={() => setIsFlipped(true)} style={{ ...miniButtonStyle, padding: "8px 16px" }}>
                                                     Flip to Back
@@ -403,10 +404,10 @@ export default function CardsPage() {
 
                                     {/* Back Face */}
                                     <div className="flip-card-back">
-                                        <div className="magnetic-stripe" />
-                                        <div className="signature-strip">
-                                            <span style={{ fontFamily: "monospace", fontWeight: 800, color: "#1e293b", fontSize: 16, fontStyle: "italic" }}>
-                                                {showSensitive ? selectedCard.cvv : "***"}
+                                        <div style={{ width: "100%", height: 48, background: "#000", margin: "0 -28px 20px", width: "calc(100% + 56px)" }} />
+                                        <div style={{ width: "100%", height: 36, background: "rgba(255,255,255,0.1)", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "flex-end", padding: "0 12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                            <span style={{ fontFamily: "monospace", fontWeight: 800, color: "#fff", fontSize: 16 }}>
+                                                {showSensitive ? selectedCard.cvv || "123" : "•••"}
                                             </span>
                                         </div>
 

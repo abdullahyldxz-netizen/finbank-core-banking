@@ -35,7 +35,7 @@ export default function CardControlsPage() {
             setAccounts(Array.isArray(accountsRes.data) ? accountsRes.data : []);
             setCards(Array.isArray(cardsRes.data) ? cardsRes.data : []);
         } catch (error) {
-            toast.error("Kontrol ekranlari yuklenemedi.");
+            toast.error("Control screens could not be loaded.");
             setAccounts([]);
             setCards([]);
         } finally {
@@ -47,10 +47,10 @@ export default function CardControlsPage() {
         setBusyKey(`account-${accountId}`);
         try {
             const res = await cardApi.toggleFreeze(accountId);
-            toast.success(res.data.message || "Hesap durumu guncellendi.");
+            toast.success(res.data.message || "Account status updated.");
             await loadData();
         } catch (error) {
-            toast.error(error.response?.data?.detail || "Hesap durumu guncellenemedi.");
+            toast.error(error.response?.data?.detail || "Account status could not be updated.");
         } finally {
             setBusyKey("");
         }
@@ -61,10 +61,10 @@ export default function CardControlsPage() {
         setBusyKey(`card-${cardId}`);
         try {
             await cardsApi.updateSettings(cardId, updates);
-            toast.success("Kart ayarlari guncellendi.");
+            toast.success("Card settings updated.");
             await loadData();
         } catch (error) {
-            toast.error(error.response?.data?.detail || "Kart ayari guncellenemedi.");
+            toast.error(error.response?.data?.detail || "Card setting could not be updated.");
         } finally {
             setBusyKey("");
         }
@@ -75,10 +75,10 @@ export default function CardControlsPage() {
         setBusyKey(`card-freeze-${cardId}`);
         try {
             const res = await cardsApi.toggleFreeze(cardId);
-            toast.success(res.data.message || "Kart durumu guncellendi.");
+            toast.success(res.data.message || "Card status updated.");
             await loadData();
         } catch (error) {
-            toast.error(error.response?.data?.detail || "Kart durumu guncellenemedi.");
+            toast.error(error.response?.data?.detail || "Card status could not be updated.");
         } finally {
             setBusyKey("");
         }
@@ -86,14 +86,14 @@ export default function CardControlsPage() {
 
     const deleteVirtualCard = async (card) => {
         const cardId = card.id || card.card_id;
-        if (!window.confirm("Bu sanal kart silinsin mi?")) return;
+        if (!window.confirm("Delete this virtual card?")) return;
         setBusyKey(`card-delete-${cardId}`);
         try {
             await cardsApi.deleteCard(cardId);
-            toast.success("Sanal kart silindi.");
+            toast.success("Virtual card deleted.");
             await loadData();
         } catch (error) {
-            toast.error(error.response?.data?.detail || "Sanal kart silinemedi.");
+            toast.error(error.response?.data?.detail || "Virtual card could not be deleted.");
         } finally {
             setBusyKey("");
         }
@@ -114,9 +114,9 @@ export default function CardControlsPage() {
     return (
         <div className="page-container" style={{ maxWidth: 1080 }}>
             <div style={{ marginBottom: 24 }}>
-                <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 6 }}>Kart ve hesap kontrolleri</h1>
+                <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 6 }}>Card and Account Controls</h1>
                 <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0 }}>
-                    Hesaplarinizi dondurun, kartlarinizin internet alisverisi ve temassiz ayarlarini yonetin.
+                    Freeze your accounts, manage your cards' internet shopping and contactless settings.
                 </p>
             </div>
 
@@ -125,10 +125,10 @@ export default function CardControlsPage() {
                     <div className="card">
                         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
                             <Shield size={18} color="#f59e0b" />
-                            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Hesap kontrolleri</h2>
+                            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Account Controls</h2>
                         </div>
                         {accounts.length === 0 ? (
-                            <EmptyState message="Henuz hesabiniz yok." />
+                            <EmptyState message="You don't have any accounts yet." />
                         ) : accounts.map((account) => {
                             const accountId = account.id || account.account_id;
                             const isFrozen = account.status === "frozen";
@@ -144,11 +144,11 @@ export default function CardControlsPage() {
                                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                                         <button type="button" onClick={() => toggleIban(accountId)} style={secondaryButtonStyle}>
                                             {showIban[accountId] ? <EyeOff size={14} /> : <Eye size={14} />}
-                                            {showIban[accountId] ? "Gizle" : "Goster"}
+                                            {showIban[accountId] ? "Hide" : "Show"}
                                         </button>
                                         <button type="button" onClick={() => toggleAccountFreeze(accountId)} disabled={busyKey === `account-${accountId}`} style={statusButtonStyle(isFrozen)}>
                                             {isFrozen ? <Unlock size={14} /> : <Lock size={14} />}
-                                            {isFrozen ? "Aktiflestir" : "Dondur"}
+                                            {isFrozen ? "Activate" : "Freeze"}
                                         </button>
                                     </div>
                                 </div>
@@ -161,10 +161,10 @@ export default function CardControlsPage() {
                     <div className="card">
                         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
                             <CreditCard size={18} color="#2563eb" />
-                            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Kart ayarlari</h2>
+                            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Card Settings</h2>
                         </div>
                         {cards.length === 0 ? (
-                            <EmptyState message="Henuz kartiniz yok." />
+                            <EmptyState message="You don't have any cards yet." />
                         ) : cards.map((card) => {
                             const cardId = card.id || card.card_id;
                             const isFrozen = card.status !== "active";
@@ -172,24 +172,24 @@ export default function CardControlsPage() {
                                 <div key={cardId} style={panelRowStyle}>
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                                            <strong>{card.card_name || (card.is_virtual ? "Sanal Kart" : "Fiziksel Kart")}</strong>
-                                            <span style={typeChipStyle(card.is_virtual)}>{card.is_virtual ? "Sanal" : "Fiziksel"}</span>
+                                            <strong>{card.card_name || (card.is_virtual ? "Virtual Card" : "Physical Card")}</strong>
+                                            <span style={typeChipStyle(card.is_virtual)}>{card.is_virtual ? "Virtual" : "Physical"}</span>
                                         </div>
                                         <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{maskCardNumber(card.card_number)}</div>
                                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
                                             <ToggleButton label="Internet" icon={<Wifi size={14} />} active={card.internet_enabled} onClick={() => updateCardSetting(card, { internet_enabled: !card.internet_enabled })} disabled={busyKey === `card-${cardId}`} />
-                                            <ToggleButton label="Temassiz" icon={<CreditCard size={14} />} active={card.contactless_enabled} onClick={() => updateCardSetting(card, { contactless_enabled: !card.contactless_enabled })} disabled={busyKey === `card-${cardId}`} />
-                                            <ToggleButton label="Yurt disi" icon={<Globe2 size={14} />} active={card.overseas_enabled} onClick={() => updateCardSetting(card, { overseas_enabled: !card.overseas_enabled })} disabled={busyKey === `card-${cardId}`} />
+                                            <ToggleButton label="Contactless" icon={<CreditCard size={14} />} active={card.contactless_enabled} onClick={() => updateCardSetting(card, { contactless_enabled: !card.contactless_enabled })} disabled={busyKey === `card-${cardId}`} />
+                                            <ToggleButton label="Overseas" icon={<Globe2 size={14} />} active={card.overseas_enabled} onClick={() => updateCardSetting(card, { overseas_enabled: !card.overseas_enabled })} disabled={busyKey === `card-${cardId}`} />
                                         </div>
                                     </div>
                                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                                         <button type="button" onClick={() => toggleCardFreeze(card)} disabled={busyKey === `card-freeze-${cardId}`} style={statusButtonStyle(isFrozen)}>
                                             {isFrozen ? <Unlock size={14} /> : <Lock size={14} />}
-                                            {isFrozen ? "Aktiflestir" : "Dondur"}
+                                            {isFrozen ? "Activate" : "Freeze"}
                                         </button>
                                         {card.is_virtual ? (
                                             <button type="button" onClick={() => deleteVirtualCard(card)} disabled={busyKey === `card-delete-${cardId}`} style={dangerButtonStyle}>
-                                                <Trash2 size={14} /> Sil
+                                                <Trash2 size={14} /> Delete
                                             </button>
                                         ) : null}
                                     </div>
@@ -201,10 +201,10 @@ export default function CardControlsPage() {
                     <div className="card">
                         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                             <Smartphone size={18} color="#10b981" />
-                            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Guvenlik notu</h2>
+                            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Security Note</h2>
                         </div>
                         <p style={{ color: "var(--text-secondary)", fontSize: 13, lineHeight: 1.7, margin: 0 }}>
-                            Sanal kartlari sadece internet odemelerinde acik tutun. Supheli durumda karti dondurup sanal karti silmek fiziksel karti korumak icin iyi bir ilk adimdir.
+                            Keep virtual cards active only for internet payments. In case of suspicion, freezing the card and deleting the virtual card is a good first step to protect the physical card.
                         </p>
                     </div>
                 </div>
