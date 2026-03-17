@@ -396,24 +396,36 @@ async def transfer(
 
 @router.get("/history")
 async def get_transaction_history(
-    limit: int = Query(50, ge=1, le=200),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    type: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user),
     db=Depends(get_database),
 ):
-    """Get transaction history for all user accounts."""
+    """Get paginated transaction history for all user accounts."""
     # Get all user accounts
     accounts = await db.accounts.find({"user_id": current_user["user_id"]}).to_list(100)
     account_ids = [a["account_id"] for a in accounts]
-    account_map = {a["account_id"]: a for a in accounts}
-
+    
     if not account_ids:
-        return []
+        return {"data": [], "total": 0}
 
-    # Get ledger entries for all user accounts
-    entries = await db.ledger_entries.find(
-        {"account_id": {"$in": account_ids}}
-    ).sort("created_at", -1).to_list(limit)
+    ledger = LedgerService(db)
+    skip = (page - 1) * limit
+    
+    entries, total = await ledger.get_entries(
+        account_id=account_ids,
+        entry_type=type,
+        category=category,
+        search=search,
+        skip=skip,
+        limit=limit
+    )
 
+    # Enrich entries with account details
+    account_map = {a["account_id"]: a for a in accounts}
     result = []
     for e in entries:
         e.pop("_id", None)
@@ -423,4 +435,4 @@ async def get_transaction_history(
         e["currency"] = acc.get("currency", "TRY")
         result.append(e)
 
-    return result
+    return {"data": result, "total": total}

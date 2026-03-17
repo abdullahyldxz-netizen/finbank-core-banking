@@ -1,15 +1,16 @@
 import structlog
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from typing import List, Optional, Any
 from app.core.database import get_database
 from app.core.security import get_current_user
 from app.services.ledger_service import LedgerService
 from app.models.investment import InvestmentTransaction, InvestmentPortfolioEntry
-from typing import List, Optional, Any
 from pydantic import BaseModel, Field
 import yfinance as yf
-import requests
+import httpx
 import time
+import anyio
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/market", tags=["Market"])
@@ -93,10 +94,10 @@ async def get_crypto_prices():
         ids = ",".join([c["id"] for c in TRACKED_CRYPTOS])
         url = f"https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies=usd&include_market_cap=true&include_24hr_change=true"
         
-        # Add a timeout
-        response = requests.get(url, timeout=5)
-        response.raise_for_status()
-        data = response.json()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
         
         assets = []
         for crypto in TRACKED_CRYPTOS:
@@ -137,34 +138,34 @@ async def get_stock_prices():
         
     try:
         symbols = " ".join([s["symbol"] for s in TRACKED_STOCKS])
-        tickers = yf.Tickers(symbols)
         
-        assets = []
-        for stock in TRACKED_STOCKS:
-            ticker = tickers.tickers.get(stock["symbol"])
-            if ticker:
-                # yfinance can sometimes be slow or return None for certain fields
-                info = ticker.fast_info
-                
-                # fast_info doesn't have 24h change directly, calculate approximation or omit
-                current_price = info.last_price
-                previous_close = info.previous_close
-                change_pct = 0.0
-                if current_price and previous_close:
-                    change_pct = ((current_price - previous_close) / previous_close) * 100
-                    
-                market_cap = info.market_cap or 0.0
-                
-                if current_price:
-                    assets.append(MarketAsset(
-                        id=stock["symbol"].lower(),
-                        symbol=stock["symbol"],
-                        name=stock["name"],
-                        current_price=float(current_price),
-                        price_change_percentage_24h=float(change_pct),
-                        market_cap=float(market_cap),
-                        type="stock"
-                    ))
+        # yfinance is synchronous, run it in a thread to avoid blocking the event loop
+        def fetch_tickers():
+            tickers = yf.Tickers(symbols)
+            results = []
+            for stock in TRACKED_STOCKS:
+                ticker = tickers.tickers.get(stock["symbol"])
+                if ticker:
+                    info = ticker.fast_info
+                    current_price = info.last_price
+                    previous_close = info.previous_close
+                    change_pct = 0.0
+                    if current_price and previous_close:
+                        change_pct = ((current_price - previous_close) / previous_close) * 100
+                    market_cap = info.market_cap or 0.0
+                    if current_price:
+                        results.append(MarketAsset(
+                            id=stock["symbol"].lower(),
+                            symbol=stock["symbol"],
+                            name=stock["name"],
+                            current_price=float(current_price),
+                            price_change_percentage_24h=float(change_pct),
+                            market_cap=float(market_cap),
+                            type="stock"
+                        ))
+            return results
+
+        assets = await anyio.to_thread.run_sync(fetch_tickers)
                     
         stock_cache["timestamp"] = float(current_time)
         stock_cache["data"] = assets
@@ -192,20 +193,24 @@ async def search_market(query: str, type: str = "all"):
     # 1. Search Stocks
     if type in ["all", "stock"]:
         try:
-            # yfinance doesn't have a great search, we try to use it as a symbol first
-            ticker = yf.Ticker(query)
-            # Try to fetch it - fast_info is a good check
-            info = ticker.fast_info
-            if info.last_price:
-                results.append(MarketAsset(
-                    id=query.lower(),
-                    symbol=query.upper(),
-                    name=ticker.info.get("longName", query.upper()),
-                    current_price=float(info.last_price),
-                    price_change_percentage_24h=0.0, # Approximate or skip
-                    market_cap=float(info.market_cap or 0.0),
-                    type="stock"
-                ))
+            def search_stock():
+                ticker = yf.Ticker(query)
+                info = ticker.fast_info
+                if info.last_price:
+                    return MarketAsset(
+                        id=query.lower(),
+                        symbol=query.upper(),
+                        name=ticker.info.get("longName", query.upper()),
+                        current_price=float(info.last_price),
+                        price_change_percentage_24h=0.0,
+                        market_cap=float(info.market_cap or 0.0),
+                        type="stock"
+                    )
+                return None
+            
+            stock_res = await anyio.to_thread.run_sync(search_stock)
+            if stock_res:
+                results.append(stock_res)
         except Exception as e:
             logger.debug("Stock search failed for symbol", query=query, error=str(e))
 
@@ -214,28 +219,29 @@ async def search_market(query: str, type: str = "all"):
         try:
             # CoinGecko Search API
             search_url = f"https://api.coingecko.com/api/v3/search?query={query}"
-            resp = requests.get(search_url, timeout=5)
-            if resp.status_code == 200:
-                data = resp.json()
-                coins = data.get("coins", [])[:5]  # Limit to top 5 hits
-                if coins:
-                    ids = ",".join([c["id"] for c in coins])
-                    price_url = f"https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies=usd&include_market_cap=true&include_24hr_change=true"
-                    price_resp = requests.get(price_url, timeout=5)
-                    price_data = price_resp.json()
-                    
-                    for c in coins:
-                        cid = c["id"]
-                        if cid in price_data:
-                            results.append(MarketAsset(
-                                id=cid,
-                                symbol=c["symbol"],
-                                name=c["name"],
-                                current_price=price_data[cid].get("usd", 0.0),
-                                price_change_percentage_24h=price_data[cid].get("usd_24h_change", 0.0),
-                                market_cap=price_data[cid].get("usd_market_cap", 0.0),
-                                type="crypto"
-                            ))
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(search_url, timeout=10)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    coins = data.get("coins", [])[:5]  # Limit to top 5 hits
+                    if coins:
+                        ids = ",".join([c["id"] for c in coins])
+                        price_url = f"https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies=usd&include_market_cap=true&include_24hr_change=true"
+                        price_resp = await client.get(price_url, timeout=10)
+                        price_data = price_resp.json()
+                        
+                        for c in coins:
+                            cid = c["id"]
+                            if cid in price_data:
+                                results.append(MarketAsset(
+                                    id=cid,
+                                    symbol=c["symbol"],
+                                    name=c["name"],
+                                    current_price=price_data[cid].get("usd", 0.0),
+                                    price_change_percentage_24h=price_data[cid].get("usd_24h_change", 0.0),
+                                    market_cap=price_data[cid].get("usd_market_cap", 0.0),
+                                    type="crypto"
+                                ))
         except Exception as e:
             logger.error("Crypto search failed", query=query, error=str(e))
 
@@ -263,10 +269,6 @@ async def get_portfolio(
         try:
              await get_stock_prices()
         except: pass
-
-    market_lookup = {}
-    for asset in (crypto_cache["data"] or []) + (stock_cache["data"] or []):
-        market_lookup[asset.id] = asset
 
     result = []
     for p in portfolio:
@@ -301,7 +303,7 @@ async def buy_asset(
             customer_id=current_user["user_id"],
             asset_id=body.asset_id,
             asset_type=body.asset_type,
-            symbol=body.asset_id.upper() if body.asset_type == "crypto" else body.asset_id.upper(), # Need to use correct lookup for symbol
+            symbol=body.asset_id.upper(),
             quantity=body.quantity,
             price_per_unit=price,
             trade_type="BUY",
@@ -338,7 +340,7 @@ async def sell_asset(
             customer_id=current_user["user_id"],
             asset_id=body.asset_id,
             asset_type=body.asset_type,
-            symbol=body.asset_id.upper(), # Approximation
+            symbol=body.asset_id.upper(),
             quantity=body.quantity,
             price_per_unit=price,
             trade_type="SELL",
@@ -366,13 +368,16 @@ async def _get_current_asset_price(asset_id: str, asset_type: str) -> Optional[f
     try:
         if asset_type == "crypto":
             url = f"https://api.coingecko.com/api/v3/simple/price?ids={asset_id}&vs_currencies=usd"
-            r = requests.get(url, timeout=5)
-            d = r.json()
-            if asset_id in d:
-                return float(d[asset_id].get("usd", 0.0))
+            async with httpx.AsyncClient() as client:
+                r = await client.get(url, timeout=10)
+                d = r.json()
+                if asset_id in d:
+                    return float(d[asset_id].get("usd", 0.0))
         else:
-            t = yf.Ticker(asset_id)
-            return float(t.fast_info.last_price)
+            def fetch_last_price():
+                t = yf.Ticker(asset_id)
+                return float(t.fast_info.last_price)
+            return await anyio.to_thread.run_sync(fetch_last_price)
     except:
         pass
 

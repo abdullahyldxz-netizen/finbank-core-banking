@@ -5,7 +5,7 @@ Append-only financial ledger. Balance is always computed, never stored.
 import uuid
 import structlog
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, Union
 from bson import Decimal128
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorClientSession
 from app.core.exceptions import InsufficientFundsError
@@ -381,9 +381,10 @@ class LedgerService:
 
     async def get_entries(
         self,
-        account_id: Optional[str] = None,
+        account_id: Optional[Union[str, List[str]]] = None,
         entry_type: Optional[str] = None,
         category: Optional[str] = None,
+        search: Optional[str] = None,
         from_date: Optional[datetime] = None,
         to_date: Optional[datetime] = None,
         skip: int = 0,
@@ -392,11 +393,19 @@ class LedgerService:
         """Query ledger entries with filtering and pagination."""
         query = {}
         if account_id:
-            query["account_id"] = account_id
+            if isinstance(account_id, list):
+                query["account_id"] = {"$in": account_id}
+            else:
+                query["account_id"] = account_id
         if entry_type:
             query["type"] = entry_type
         if category:
             query["category"] = category
+        if search:
+            query["$or"] = [
+                {"description": {"$regex": search, "$options": "i"}},
+                {"category": {"$regex": search, "$options": "i"}}
+            ]
         if from_date or to_date:
             date_filter = {}
             if from_date:

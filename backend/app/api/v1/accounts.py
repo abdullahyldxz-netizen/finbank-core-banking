@@ -285,6 +285,12 @@ async def toggle_freeze(
         {"$set": {"status": new_status}}
     )
 
+    # Sync status with any associated debit cards
+    await db.debit_cards.update_many(
+        {"account_id": account_id},
+        {"$set": {"status": new_status}}
+    )
+
     status_text = "donduruldu ❄️" if new_status == "frozen" else "aktifleştirildi ✅"
     return {"message": f"Hesap {status_text}", "status": new_status}
 

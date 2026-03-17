@@ -15,30 +15,30 @@ import { transactionApi, paymentRequestsApi } from "../services/api";
 import { toast } from "react-hot-toast";
 
 const CATEGORY_OPTIONS = [
-    { value: "", label: "All categories" },
-    { value: "DEPOSIT", label: "Deposit" },
-    { value: "WITHDRAWAL", label: "Withdrawal" },
-    { value: "TRANSFER_IN", label: "Incoming transfer" },
-    { value: "TRANSFER_OUT", label: "Outgoing transfer" },
-    { value: "BILL_PAYMENT", label: "Bill payment" },
-    { value: "CARD_PAYMENT", label: "Card payment" },
-    { value: "GOAL_CONTRIBUTION", label: "Goal contribution" },
+    { value: "", label: "Tüm kategoriler" },
+    { value: "DEPOSIT", label: "Para Yatırma" },
+    { value: "WITHDRAWAL", label: "Para Çekme" },
+    { value: "TRANSFER_IN", label: "Gelen Transfer" },
+    { value: "TRANSFER_OUT", label: "Giden Transfer" },
+    { value: "BILL_PAYMENT", label: "Fatura Ödemesi" },
+    { value: "CARD_PAYMENT", label: "Kart Ödemesi" },
+    { value: "GOAL_CONTRIBUTION", label: "Birikim Hedefi" },
 ];
 
 const TYPE_OPTIONS = [
-    { value: "", label: "All directions" },
-    { value: "CREDIT", label: "Incoming" },
-    { value: "DEBIT", label: "Outgoing" },
+    { value: "", label: "Tüm yönler" },
+    { value: "CREDIT", label: "Girişler" },
+    { value: "DEBIT", label: "Çıkışlar" },
 ];
 
 const CATEGORY_LABELS = {
-    DEPOSIT: "Deposit",
-    WITHDRAWAL: "Withdrawal",
-    TRANSFER_IN: "Incoming transfer",
-    TRANSFER_OUT: "Outgoing transfer",
-    BILL_PAYMENT: "Bill payment",
-    CARD_PAYMENT: "Card payment",
-    GOAL_CONTRIBUTION: "Goal contribution",
+    DEPOSIT: "Para Yatırma",
+    WITHDRAWAL: "Para Çekme",
+    TRANSFER_IN: "Gelen Transfer",
+    TRANSFER_OUT: "Giden Transfer",
+    BILL_PAYMENT: "Fatura Ödemesi",
+    CARD_PAYMENT: "Kart Ödemesi",
+    GOAL_CONTRIBUTION: "Birikim Hedefi",
 };
 
 export default function TransferHistoryPage() {
@@ -77,18 +77,18 @@ export default function TransferHistoryPage() {
         fetchHistory();
     }, [fetchHistory]);
 
-    const formatMoney = (value) => new Intl.NumberFormat("en-US", {
+    const formatMoney = (value) => new Intl.NumberFormat("tr-TR", {
         style: "currency",
         currency: "TRY",
     }).format(value || 0);
 
     const exportCsv = () => {
         if (!entries.length) return;
-        const header = "Date,Type,Category,Description,Amount\n";
+        const header = "Tarih,Tip,Kategori,Açıklama,Tutar\n";
         const rows = entries.map((entry) => {
-            const date = new Date(entry.created_at).toLocaleString("en-US");
-            const type = entry.type === "CREDIT" ? "Incoming" : "Outgoing";
-            const category = CATEGORY_LABELS[entry.category] || entry.category || "Transaction";
+            const date = new Date(entry.created_at).toLocaleString("tr-TR");
+            const type = entry.type === "CREDIT" ? "Giriş" : "Çıkış";
+            const category = CATEGORY_LABELS[entry.category] || entry.category || "İşlem";
             const description = (entry.description || "").replaceAll(",", " ");
             return `${date},${type},${category},${description},${entry.amount}`;
         });
@@ -96,7 +96,7 @@ export default function TransferHistoryPage() {
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
         anchor.href = url;
-        anchor.download = `transfer-history-${new Date().toISOString().slice(0, 10)}.csv`;
+        anchor.download = `islem-gecmisi-${new Date().toISOString().slice(0, 10)}.csv`;
         anchor.click();
         URL.revokeObjectURL(url);
     };
@@ -113,7 +113,7 @@ export default function TransferHistoryPage() {
         setSplitForm({
             target_alias: "",
             amount: (Number(entry.amount) / 2).toFixed(2),
-            description: `Split payment: ${entry.description || CATEGORY_LABELS[entry.category] || "Transaction"}`
+            description: `Ödeme paylaşımı: ${entry.description || CATEGORY_LABELS[entry.category] || "İşlem"}`
         });
         setSplitModal({ show: true, entry });
     };
@@ -127,10 +127,10 @@ export default function TransferHistoryPage() {
                 amount: Number(splitForm.amount),
                 description: splitForm.description
             });
-            toast.success("Payment request sent.");
+            toast.success("Ödeme isteği gönderildi.");
             setSplitModal({ show: false, entry: null });
         } catch (error) {
-            toast.error(error.response?.data?.detail || "Request could not be sent.");
+            toast.error(error.response?.data?.detail || "İstek gönderilemedi.");
         } finally {
             setSplitLoading(false);
         }
@@ -141,21 +141,21 @@ export default function TransferHistoryPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
                 <div>
                     <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
-                        <History size={28} color="#2563eb" /> Transfer History
+                        <History size={28} color="#2563eb" /> İşlem Geçmişi
                     </h1>
                     <p style={{ color: "var(--text-secondary)", margin: "8px 0 0" }}>
-                        Monitor your money movements, transfers, and payments on a single screen.
+                        Para hareketlerinizi, transferlerinizi ve ödemelerinizi tek ekrandan takip edin.
                     </p>
                 </div>
                 <button onClick={exportCsv} style={secondaryButtonStyle}>
-                    <Download size={16} /> Download CSV
+                    <Download size={16} /> CSV İndir
                 </button>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 20 }}>
-                <SummaryCard label="Total incoming" value={`+${formatMoney(totalIn)}`} accent="#10b981" />
-                <SummaryCard label="Total outgoing" value={`-${formatMoney(totalOut)}`} accent="#ef4444" />
-                <SummaryCard label="Net movement" value={formatMoney(totalIn - totalOut)} accent="#2563eb" />
+                <SummaryCard label="Toplam Giriş" value={`+${formatMoney(totalIn)}`} accent="#10b981" />
+                <SummaryCard label="Toplam Çıkış" value={`-${formatMoney(totalOut)}`} accent="#ef4444" />
+                <SummaryCard label="Net Hareket" value={formatMoney(totalIn - totalOut)} accent="#2563eb" />
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 16 }}>
@@ -167,7 +167,7 @@ export default function TransferHistoryPage() {
                             setPage(1);
                             setFilter((prev) => ({ ...prev, search: event.target.value }));
                         }}
-                        placeholder="Search description or category"
+                        placeholder="Açıklama veya kategori ara"
                         style={{ ...inputStyle, paddingLeft: 38 }}
                     />
                 </div>
@@ -208,7 +208,7 @@ export default function TransferHistoryPage() {
                 </div>
             ) : entries.length === 0 ? (
                 <div style={emptyStateStyle}>
-                    No transactions found for these filters.
+                    Bu filtrelere uygun işlem bulunamadı.
                 </div>
             ) : (
                 <div style={listStyle}>
@@ -231,18 +231,18 @@ export default function TransferHistoryPage() {
                                     </div>
                                     <div>
                                         <div style={{ fontWeight: 700, fontSize: 14 }}>
-                                            {entry.description || CATEGORY_LABELS[entry.category] || "Financial transaction"}
+                                            {entry.description || CATEGORY_LABELS[entry.category] || "Finansal İşlem"}
                                         </div>
                                         <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                            <span>{CATEGORY_LABELS[entry.category] || entry.category || "Other"}</span>
+                                            <span>{CATEGORY_LABELS[entry.category] || entry.category || "Diğer"}</span>
                                             <span>•</span>
-                                            <span>{new Date(entry.created_at).toLocaleString("en-US")}</span>
+                                            <span>{new Date(entry.created_at).toLocaleString("tr-TR")}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
                                     <div style={{ fontSize: 16, fontWeight: 800, color: isCredit ? "#10b981" : "#ef4444" }}>
-                                        {isCredit ? "+" : "-"}{formatMoney(entry.amount)}
+                                        {isCredit ? "+" : "-"}{formatMoney(Math.abs(entry.amount))}
                                     </div>
                                     {!isCredit ? (
                                         <button
@@ -252,7 +252,7 @@ export default function TransferHistoryPage() {
                                                 borderRadius: 8, padding: "4px 8px", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, cursor: "pointer", color: "var(--text-primary)"
                                             }}
                                         >
-                                            <SplitSquareHorizontal size={14} /> Split
+                                            <SplitSquareHorizontal size={14} /> Paylaş
                                         </button>
                                     ) : null}
                                 </div>
@@ -264,13 +264,13 @@ export default function TransferHistoryPage() {
 
             <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 18 }}>
                 <button disabled={page <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))} style={paginationButtonStyle}>
-                    Previous
+                    Geri
                 </button>
                 <span style={{ padding: "10px 14px", fontWeight: 600, color: "var(--text-secondary)" }}>
-                    Page {page}
+                    Sayfa {page}
                 </span>
                 <button disabled={!hasNextPage} onClick={() => setPage((prev) => prev + 1)} style={paginationButtonStyle}>
-                    Next
+                    İleri
                 </button>
             </div>
 
@@ -279,28 +279,28 @@ export default function TransferHistoryPage() {
                 <div style={modalOverlayStyle}>
                     <div style={modalContentStyle}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                            <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>Split Expense</h2>
+                            <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>Harcama Paylaş</h2>
                             <button onClick={() => setSplitModal({ show: false, entry: null })} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer" }}>
                                 <XCircle size={24} />
                             </button>
                         </div>
                         <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
-                            You can request payment from someone else for this transaction. The amount is automatically split in two, you can change it if you wish.
+                            Bu işlem için başkasından ödeme isteyebilirsiniz. Tutar otomatik olarak ikiye bölünür, isterseniz değiştirebilirsiniz.
                         </p>
                         <form onSubmit={handleSplitSubmit} style={{ display: "grid", gap: 16 }}>
                             <div>
-                                <label style={labelStyle}>Request From (Phone, Email, ID Number)</label>
+                                <label style={labelStyle}>İstenen Kişi (Telefon, E-posta veya TCKN)</label>
                                 <input
                                     className="form-input"
                                     value={splitForm.target_alias}
                                     onChange={e => setSplitForm(prev => ({ ...prev, target_alias: e.target.value }))}
-                                    placeholder="e.g.: 5XX1234567"
+                                    placeholder="Örn: 5XX1234567"
                                     required
                                     style={inputStyle}
                                 />
                             </div>
                             <div>
-                                <label style={labelStyle}>Amount (To be requested)</label>
+                                <label style={labelStyle}>Tutar (İstenecek miktar)</label>
                                 <input
                                     className="form-input"
                                     type="number"
@@ -312,7 +312,7 @@ export default function TransferHistoryPage() {
                                 />
                             </div>
                             <div>
-                                <label style={labelStyle}>Description</label>
+                                <label style={labelStyle}>Açıklama</label>
                                 <input
                                     className="form-input"
                                     value={splitForm.description}
@@ -322,7 +322,7 @@ export default function TransferHistoryPage() {
                                 />
                             </div>
                             <button type="submit" disabled={splitLoading} style={primaryButtonStyle}>
-                                {splitLoading ? <RefreshCw size={18} style={{ animation: "spin 1s linear infinite" }} /> : "Send Request"}
+                                {splitLoading ? <RefreshCw size={18} style={{ animation: "spin 1s linear infinite" }} /> : "Paylaşım İsteği Gönder"}
                             </button>
                         </form>
                     </div>

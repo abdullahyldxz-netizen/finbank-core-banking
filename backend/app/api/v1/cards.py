@@ -334,3 +334,35 @@ async def get_card_transactions(
     for t in txs:
         t.pop("_id", None)
     return txs
+
+@router.patch("/{card_id}/toggle-freeze")
+async def toggle_credit_card_freeze(
+    card_id: str,
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_db)
+):
+    """Toggle the freeze status of a credit card"""
+    user_id = current_user.get("user_id")
+    customer = await db.customers.find_one({"user_id": user_id})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    card = await db.credit_cards.find_one({
+        "id": card_id,
+        "customer_id": customer["customer_id"]
+    })
+    
+    if not card:
+        raise HTTPException(status_code=404, detail="Credit card not found")
+        
+    new_status = "frozen" if card.get("status", "active") == "active" else "active"
+    
+    await db.credit_cards.update_one(
+        {"id": card_id},
+        {"$set": {
+            "status": new_status,
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    
+    return {"message": f"Card {new_status}", "status": new_status}

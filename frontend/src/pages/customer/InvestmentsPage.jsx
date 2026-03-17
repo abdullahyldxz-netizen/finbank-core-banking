@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { TrendingUp, TrendingDown, RefreshCcw, HandCoins, ArrowLeftRight, HelpCircle, X, Wallet } from "lucide-react";
 import toast from "react-hot-toast";
+import { investmentApi, accountApi } from "../../services/api";
 
 export default function InvestmentsPage() {
     const [cryptoData, setCryptoData] = useState([]);
@@ -19,28 +20,18 @@ export default function InvestmentsPage() {
         setLoading(true);
         try {
             const [cryptoRes, stockRes, portRes, accountsRes] = await Promise.all([
-                fetch("/api/v1/market/crypto", {
-                    headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
-                }),
-                fetch("/api/v1/market/stocks", {
-                    headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
-                }),
-                fetch("/api/v1/market/portfolio", {
-                    headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
-                }),
-                fetch("/api/v1/accounts/my", {
-                     headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
-                })
+                investmentApi.getCryptoList(),
+                investmentApi.getStockList(),
+                investmentApi.getPortfolio(),
+                accountApi.listMine()
             ]);
 
-            if (cryptoRes.ok) setCryptoData(await cryptoRes.json());
-            if (stockRes.ok) setStockData(await stockRes.json());
-            if (portRes.ok) setPortfolio(await portRes.json());
-            if (accountsRes.ok) {
-                const accs = await accountsRes.json();
-                // Filter out credit cards, only checking/savings have real fiat balances for this purpose
-                setAccounts(accs.filter(a => a.account_type !== "credit" && a.status === "active"));
-            }
+            setCryptoData(cryptoRes.data);
+            setStockData(stockRes.data);
+            setPortfolio(portRes.data);
+            
+            // Filter out credit cards, only checking/savings have real fiat balances for this purpose
+            setAccounts(accountsRes.data.filter ? accountsRes.data.filter(a => a.account_type !== "credit" && a.status === "active") : accountsRes.data);
         } catch (error) {
             console.error("Market data fetch failed", error);
             toast.error("Unable to load market data.");
@@ -73,18 +64,16 @@ export default function InvestmentsPage() {
     const [isSearching, setIsSearching] = useState(false);
 
     const handleSearch = async (e) => {
-        if (e.key !== 'Enter' || !searchTerm.trim()) return;
-        
+        if (e.key !== "Enter" || !searchTerm.trim()) return;
+
         setIsSearching(true);
         try {
-            const res = await fetch(`/api/v1/market/search?query=${searchTerm}&type=${activeTab === 'stocks' ? 'stock' : activeTab === 'crypto' ? 'crypto' : 'all'}`, {
-                headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setSearchResults(data);
-                if (data.length === 0) toast.error("No assets found for your search.");
-            }
+            const res = await investmentApi.search(
+                searchTerm,
+                activeTab === "stocks" ? "stock" : activeTab === "crypto" ? "crypto" : "all"
+            );
+            setSearchResults(res.data);
+            if (res.data.length === 0) toast.error("No assets found for your search.");
         } catch (error) {
             console.error("Search failed", error);
             toast.error("Search failed.");
@@ -334,10 +323,10 @@ function MarketList({ data, formatMoney, onAction }) {
                                 </td>
                                 <td className="py-4 pr-4 text-right flex justify-end gap-2">
                                     <button onClick={() => onAction(item, 'buy')} className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 font-semibold text-emerald-500 transition hover:bg-emerald-500 hover:text-white">
-                                        Buy
+                                        Satın Al
                                     </button>
                                     <button onClick={() => onAction(item, 'sell')} className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-1.5 font-semibold text-rose-500 transition hover:bg-rose-500 hover:text-white">
-                                        Sell
+                                        Sat
                                     </button>
                                 </td>
                             </tr>
@@ -351,7 +340,7 @@ function MarketList({ data, formatMoney, onAction }) {
 
 function TradeModal({ asset, action, accounts, onClose, onSuccess, formatMoney }) {
     const [quantity, setQuantity] = useState("");
-    const [accountId, setAccountId] = useState(accounts[0]?.account_id || "");
+    const [accountId, setAccountId] = useState(accounts[0]?.id || accounts[0]?.account_id || "");
     const [loading, setLoading] = useState(false);
 
     const isBuy = action === "buy";
@@ -367,27 +356,18 @@ function TradeModal({ asset, action, accounts, onClose, onSuccess, formatMoney }
 
         setLoading(true);
         try {
-            const res = await fetch(`/api/v1/market/${action}`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token")}`
-                },
-                body: JSON.stringify({
-                    asset_id: asset.id || asset.asset_id,
-                    asset_type: asset.type,
-                    quantity: parsedQuantity,
-                    source_account_id: accountId
-                })
-            });
+            const data = {
+                asset_id: asset.id || asset.asset_id,
+                asset_type: asset.type,
+                quantity: parsedQuantity,
+                source_account_id: accountId,
+            };
 
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || "Transaction failed.");
-            
-            toast.success(data.message || "Transaction completed successfully.");
+            const res = await (isBuy ? investmentApi.buy(data) : investmentApi.sell(data));
+            toast.success(res.data.message || "Transaction completed successfully.");
             onSuccess();
         } catch (error) {
-            toast.error(error.message);
+            toast.error(error.response?.data?.detail || error.message || "Transaction failed.");
         } finally {
             setLoading(false);
         }
@@ -420,11 +400,14 @@ function TradeModal({ asset, action, accounts, onClose, onSuccess, formatMoney }
                             onChange={(e) => setAccountId(e.target.value)}
                             required
                         >
-                            {accounts.map(acc => (
-                                <option key={acc.account_id} value={acc.account_id}>
-                                    {acc.currency} - {acc.account_number} ({acc.balance} {acc.currency})
-                                </option>
-                            ))}
+                            {accounts.map(acc => {
+                                const id = acc.id || acc.account_id;
+                                return (
+                                    <option key={id} value={id}>
+                                        {acc.currency} - {acc.account_number} ({acc.balance} {acc.currency})
+                                    </option>
+                                );
+                            })}
                         </select>
                     </div>
 
