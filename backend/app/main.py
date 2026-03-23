@@ -21,10 +21,13 @@ from app.core.config import settings
 from app.core.database import connect_to_mongo, close_mongo_connection, get_database
 from app.core.logging import configure_logging
 from app.api.v1 import accounts, transactions, auth, employee, admin, customers, bills, cards, \
-    exchange, ledger, audit, approvals, messages, easy_addresses, payment_requests, auto_bills, goals, analytics, market
+    exchange, ledger, audit, approvals, messages, easy_addresses, payment_requests, auto_bills, goals, analytics, \
+    market, notifications
 
 from app.core.banks import fetch_external_banks
 from app.utils.iso20022 import parse_pacs008_xml, generate_pacs002_xml
+from app.core.security import authenticate_token
+from app.core.ws_manager import ws_manager
 from app.services.ledger_service import LedgerService
 
 # ── Configure Logging ──
@@ -141,6 +144,7 @@ app.include_router(auto_bills.router, prefix="/api/v1/auto-bills", tags=["Auto B
 app.include_router(goals.router, prefix=API_PREFIX)
 app.include_router(analytics.router, prefix=API_PREFIX)
 app.include_router(market.router, prefix=API_PREFIX)
+app.include_router(notifications.router, prefix=API_PREFIX)
 
 
 # ── Root ──
@@ -162,19 +166,32 @@ async def root():
 async def customer_websocket(websocket: WebSocket, token: str, db=Depends(get_database)):
     """Customer-facing WebSocket for real-time transfer/notification events."""
     await websocket.accept()
-    logger.info("customer_ws_connected")
+    try:
+        current_user = await authenticate_token(token, db)
+        user_id = current_user["user_id"]
+    except Exception:
+        await websocket.close(code=1008)
+        return
+
+    await ws_manager.connect(websocket, user_id)
+    logger.info("customer_ws_connected", user_id=user_id, online_connections=ws_manager.online_count())
+
     try:
         while True:
             data = await websocket.receive_text()
-            import json
             try:
+                import json
                 msg = json.loads(data)
                 if msg.get("type") == "ping":
                     await websocket.send_text(json.dumps({"type": "pong"}))
             except json.JSONDecodeError:
                 pass
-    except Exception:
-        logger.info("customer_ws_disconnected")
+    except WebSocketDisconnect:
+        logger.info("customer_ws_disconnected", user_id=user_id)
+    except Exception as e:
+        logger.warning("customer_ws_error", user_id=user_id, error=str(e))
+    finally:
+        ws_manager.disconnect(websocket, user_id)
 
 
 # ── Inter-Bank WebSocket Endpoint ──
@@ -188,7 +205,7 @@ async def inter_bank_websocket(websocket: WebSocket, sender_bank_code: str, db=D
         
         receiver_iban = transfer_details.get("receiver_iban")
         amount = transfer_details.get("amount")
-        msg_id = transfer_details.get("msg_id")
+        msg_id = transfer_details.get("end_to_end_id") or transfer_details.get("msg_id") or "UNKNOWN"
         
         if not receiver_iban or not amount:
             reject_xml = generate_pacs002_xml(msg_id, "RJCT", "Missing receiver_iban or amount in pacs.008")

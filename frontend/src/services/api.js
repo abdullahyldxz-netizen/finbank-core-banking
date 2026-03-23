@@ -1,6 +1,10 @@
 import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
+const envApiBase = (import.meta.env.VITE_API_URL || "").trim();
+const isLocalRuntime =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+const API_BASE = (isLocalRuntime ? "/api/v1" : (envApiBase || "/api/v1")).replace(/\/$/, "");
 
 const api = axios.create({
     baseURL: API_BASE,

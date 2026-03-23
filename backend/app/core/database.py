@@ -51,6 +51,12 @@ async def connect_to_mongo():
     await _db.audit_logs.create_index("user_id")
     await _db.audit_logs.create_index("action")
 
+    # In-app notifications
+    await _db.notifications.create_index("notification_id", unique=True)
+    await _db.notifications.create_index("user_id")
+    await _db.notifications.create_index("read")
+    await _db.notifications.create_index("created_at")
+
     # ── MongoDB Schema Validation for ledger_entries (append-only enforcement) ──
     try:
         await _db.command({

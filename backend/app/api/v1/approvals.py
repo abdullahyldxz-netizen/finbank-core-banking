@@ -11,6 +11,7 @@ from app.core.database import get_database
 from app.core.security import get_current_user
 from app.models.approval import ApprovalRequestCreate, ApprovalResponse, ApprovalActionRequest
 from app.services.audit_service import log_audit, get_client_info
+from app.services.balance_service import get_user_total_balance
 
 router = APIRouter(prefix="/approvals", tags=["Approvals"])
 
@@ -62,11 +63,7 @@ async def create_approval(
         )
 
     # Fetch actual account balances to feed the deterministic risk engine
-    accounts = await db.accounts.find({
-        "user_id": current_user["user_id"],
-        "status": "active"
-    }).to_list(100)
-    total_balance = sum(acc.get("balance", 0) for acc in accounts)
+    total_balance = await get_user_total_balance(db, current_user["user_id"])
 
     risk_score = _generate_mock_ai_risk_score(body.amount or 0, total_balance)
     

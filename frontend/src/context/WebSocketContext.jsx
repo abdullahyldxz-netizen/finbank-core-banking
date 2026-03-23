@@ -61,7 +61,10 @@ export function WebSocketProvider({ children }) {
     }
 
     // WS URL'ini oluştur
-    const apiUrl = import.meta.env.VITE_API_URL || "/api/v1";
+    const envApiUrl = (import.meta.env.VITE_API_URL || "").trim();
+    const isLocalRuntime =
+      window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    const apiUrl = (isLocalRuntime ? "/api/v1" : (envApiUrl || "/api/v1")).replace(/\/$/, "");
     let wsUrl;
 
     if (apiUrl.startsWith("http")) {

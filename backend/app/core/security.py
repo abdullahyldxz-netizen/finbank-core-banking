@@ -62,6 +62,11 @@ async def get_current_user(
     db=Depends(get_database),
 ) -> dict:
     """Dependency: get current authenticated user from Supabase JWT."""
+    return await authenticate_token(token, db)
+
+
+async def authenticate_token(token: str, db) -> dict:
+    """Validate a Supabase token and return local user record."""
     try:
         user_response = get_supabase_client().auth.get_user(token)
         if not user_response or not user_response.user:

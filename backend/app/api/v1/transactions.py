@@ -3,13 +3,17 @@ FinBank - Transaction API Routes (Deposits, Withdrawals, Transfers)
 """
 from datetime import datetime, timezone
 from typing import List, Optional
+import uuid
 import websockets
 import httpx
 from app.core.banks import EXTERNAL_BANKS, MY_BANK_CODE
 from app.utils.iso20022 import generate_pacs008_xml, parse_pacs002_xml
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, Header, BackgroundTasks
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from app.core.database import get_database
 from app.core.security import get_current_user
+from app.core.ws_manager import ws_manager
 from app.core.exceptions import (
     InsufficientFundsError, AccountNotFoundError,
     AccountFrozenError, SameAccountTransferError,
@@ -19,10 +23,12 @@ from app.models.transaction import (
     TransferRequest, TransactionResponse,
 )
 from app.services.ledger_service import LedgerService
+from app.services.balance_service import get_user_total_balance
 from app.services.audit_service import log_audit, get_client_info
 from app.events.webhook import send_webhook, publish_transfer_events, WebhookEvent
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 async def _validate_account_ownership(
@@ -46,7 +52,38 @@ async def _validate_account_ownership(
     return account
 
 
+async def _create_notification(
+    db,
+    user_id: str,
+    notif_type: str,
+    message: str,
+    metadata: Optional[dict] = None,
+):
+    now = datetime.now(timezone.utc)
+    notification = {
+        "notification_id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "type": notif_type,
+        "message": message,
+        "metadata": metadata or {},
+        "read": False,
+        "created_at": now,
+    }
+    await db.notifications.insert_one(notification)
+    await ws_manager.send_to_user(
+        user_id,
+        {
+            "type": notif_type,
+            "message": message,
+            "metadata": notification["metadata"],
+            "notification_id": notification["notification_id"],
+            "created_at": now.isoformat(),
+        },
+    )
+
+
 @router.post("/deposit", response_model=TransactionResponse)
+@limiter.limit("20/minute")
 async def deposit(
     body: DepositRequest,
     request: Request,
@@ -64,15 +101,10 @@ async def deposit(
     )
 
     from app.api.v1.approvals import _generate_mock_ai_risk_score
-    accounts = await db.accounts.find({
-        "user_id": current_user["user_id"],
-        "status": "active"
-    }).to_list(100)
-    total_balance = sum(acc.get("balance", 0) for acc in accounts)
+    total_balance = await get_user_total_balance(db, current_user["user_id"])
     risk_score = _generate_mock_ai_risk_score(body.amount or 0, total_balance)
     
     now = datetime.now(timezone.utc)
-    import uuid
     approval_doc = {
         "user_id": current_user["user_id"],
         "user_name": current_user.get("full_name", current_user["email"]),
@@ -123,6 +155,7 @@ async def deposit(
 
 
 @router.post("/withdraw", response_model=TransactionResponse)
+@limiter.limit("20/minute")
 async def withdraw(
     body: WithdrawRequest,
     request: Request,
@@ -205,6 +238,7 @@ async def withdraw(
 
 
 @router.post("/transfer", response_model=TransactionResponse)
+@limiter.limit("20/minute")
 async def transfer(
     body: TransferRequest,
     request: Request,
@@ -282,6 +316,7 @@ async def transfer(
         msg_id, xml_payload = generate_pacs008_xml(
             sender_iban=from_account["iban"],
             sender_name=current_user.get("full_name", "FinBank User"),
+            receiver_name=to_account.get("receiver_name", "External Beneficiary"),
             receiver_iban=to_account["iban"],
             amount=body.amount,
             currency="TRY",
@@ -299,7 +334,7 @@ async def transfer(
                 response_xml = await websocket.recv()
                 parsed_response = parse_pacs002_xml(response_xml)
                 
-                if parsed_response.get("status") != "ACCP":
+                if parsed_response.get("status_code") not in {"ACTC", "ACCP", "ACSP"}:
                     raise HTTPException(status_code=400, detail=f"Karsi banka transferi reddetti: {parsed_response.get('reason')}")
         except HTTPException:
             raise
@@ -372,6 +407,34 @@ async def transfer(
         amount=body.amount,
         currency=from_account.get("currency", "TRY")
     )
+
+    await _create_notification(
+        db,
+        current_user["user_id"],
+        "transfer_sent",
+        f"{body.amount:.2f} {from_account.get('currency', 'TRY')} transfer gonderildi.",
+        {
+            "transfer_ref": txn_ref,
+            "to_account_id": body.to_account_id,
+            "to_iban": to_account.get("iban"),
+            "amount": body.amount,
+        },
+    )
+
+    receiver_user_id = to_account.get("user_id")
+    if receiver_user_id and receiver_user_id != current_user["user_id"] and not to_account.get("is_external"):
+        await _create_notification(
+            db,
+            receiver_user_id,
+            "transfer_received",
+            f"{body.amount:.2f} {from_account.get('currency', 'TRY')} transfer alindi.",
+            {
+                "transfer_ref": txn_ref,
+                "from_account_id": body.from_account_id,
+                "from_iban": from_account.get("iban"),
+                "amount": body.amount,
+            },
+        )
 
     response = TransactionResponse(
         transaction_ref=txn_ref,
