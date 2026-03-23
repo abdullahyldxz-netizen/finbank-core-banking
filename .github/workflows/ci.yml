@@ -31,10 +31,9 @@ jobs:
       - name: Lint with ruff
         run: |
           pip install ruff
-          ruff check . --output-format=github || echo "Lint warnings found (non-blocking)"
+          ruff check . --output-format=github
 
       - name: Run unit tests
-        continue-on-error: true
         env:
           MONGODB_URL: mongodb://localhost:27017
           MONGODB_DB_NAME: finbank_test
@@ -46,7 +45,7 @@ jobs:
           GEMINI_API_KEY: test-key
         run: |
           pip install pytest httpx
-          python -m pytest tests/ -v --tb=short || echo "Some tests require live database connection"
+          python -m pytest tests/ -v --tb=short
 
   # ── Frontend Linting & Build ──
   frontend:
@@ -71,7 +70,7 @@ jobs:
         run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
       - name: Lint
-        run: npx eslint src/ --ext .js,.jsx --no-error-on-unmatched-pattern || echo "ESLint not configured yet"
+        run: npx eslint src/ --ext .js,.jsx --no-error-on-unmatched-pattern
 
       - name: Build
         run: npm run build
@@ -97,7 +96,6 @@ jobs:
           docker compose config
 
       - name: Verify Microservices Docker Compose Config
-        continue-on-error: true
         run: |
           cd infra
           docker compose config

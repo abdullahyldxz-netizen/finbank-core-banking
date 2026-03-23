@@ -358,7 +358,7 @@ async def transfer(
         user_id=current_user["user_id"],
         user_email=current_user["email"],
         role=current_user["role"],
-        details=f"Transfer {body.amount} from {from_account['account_number']} to {to_account['account_number']}",
+        details=f"Transfer {body.amount} from {from_account.get('account_number', from_account.get('iban', 'N/A'))} to {to_account.get('account_number', to_account.get('iban', 'N/A'))}",
         ip_address=ip,
         user_agent=ua,
     )

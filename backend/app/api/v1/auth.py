@@ -19,8 +19,11 @@ from app.services.audit_service import log_audit, get_client_info
 from app.services.supabase_sync import sync_user, sync_customer
 from app.services.notification_service import send_welcome_email, send_telegram_message, send_verification_email
 import uuid
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 def require_dev_seed_access(request: Request) -> None:
@@ -38,6 +41,7 @@ def require_dev_seed_access(request: Request) -> None:
 
 
 @router.post("/register", response_model=UserResponse, status_code=201)
+@limiter.limit("5/minute")
 async def register(
     body: UserRegisterRequest,
     request: Request,
@@ -178,6 +182,7 @@ async def register(
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("10/minute")
 async def login(
     body: UserLoginRequest,
     request: Request,

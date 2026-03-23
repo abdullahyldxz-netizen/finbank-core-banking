@@ -114,7 +114,8 @@ async def log_requests(request: Request, call_next):
 
 # ── Health Check ──
 @app.get("/health", tags=["System"])
-async def health_check():
+@limiter.limit("60/minute")
+async def health_check(request: Request):
     """Health check endpoint for Docker."""
     return {"status": "healthy", "service": "FinBank Core Banking"}
 
@@ -154,6 +155,26 @@ async def root():
         "docs": "/docs",
         "redoc": "/redoc",
     }
+
+
+# ── Customer WebSocket Endpoint (real-time notifications) ──
+@app.websocket("/api/v1/ws/{token}")
+async def customer_websocket(websocket: WebSocket, token: str, db=Depends(get_database)):
+    """Customer-facing WebSocket for real-time transfer/notification events."""
+    await websocket.accept()
+    logger.info("customer_ws_connected")
+    try:
+        while True:
+            data = await websocket.receive_text()
+            import json
+            try:
+                msg = json.loads(data)
+                if msg.get("type") == "ping":
+                    await websocket.send_text(json.dumps({"type": "pong"}))
+            except json.JSONDecodeError:
+                pass
+    except Exception:
+        logger.info("customer_ws_disconnected")
 
 
 # ── Inter-Bank WebSocket Endpoint ──

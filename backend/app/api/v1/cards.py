@@ -7,6 +7,7 @@ import uuid
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.credit_card import CreditCardResponse, CreditCardCreate, VirtualCardCreate, CreditCardPaymentRequest, CreditCardTransaction
+from app.services.ledger_service import LedgerService
 
 router = APIRouter()
 
@@ -199,7 +200,11 @@ async def pay_credit_card_debt(
     
     if not account:
         raise HTTPException(status_code=404, detail="Source account not found or doesn't belong to you")
-    if account["balance"] < request.amount:
+
+    # Check balance from ledger (computed, not stored)
+    ledger = LedgerService(db)
+    balance = await ledger.get_balance(request.from_account_id)
+    if balance < request.amount:
         raise HTTPException(status_code=400, detail="Insufficient funds in source account")
         
     # Verify the card
@@ -214,12 +219,15 @@ async def pay_credit_card_debt(
     if request.amount > card["current_debt"]:
         raise HTTPException(status_code=400, detail="Payment amount exceeds current debt")
 
-    # Start transaction session ideally, but we will do it sequentially here (MongoDB free tier might not support pure transactions without replica sets)
-    
-    # 1. Deduct from account
-    await db.accounts.update_one(
-        {"account_id": request.from_account_id},
-        {"$inc": {"balance": -request.amount}}
+    # 1. Create a DEBIT ledger entry (through ledger service — append-only)
+    await ledger.append_entry(
+        account_id=request.from_account_id,
+        entry_type="DEBIT",
+        category="CC_PAYMENT",
+        amount=-request.amount,
+        description=f"Kredi Kartı Borç Ödemesi ({card['card_number'][-4:]})",
+        created_by=current_user.get("user_id", "SYSTEM"),
+        transaction_ref=f"CCP-{str(uuid.uuid4())[:8]}"
     )
     
     # 2. Update card debt and available limit
@@ -233,20 +241,6 @@ async def pay_credit_card_debt(
             "$set": {"updated_at": datetime.now(timezone.utc)}
         }
     )
-    
-    # 3. Log ledger transaction for account
-    tx_doc = {
-        "transaction_id": str(uuid.uuid4()),
-        "from_account_id": request.from_account_id,
-        "to_account_id": f"CC_PAYMENT_{card_id}",
-        "amount": request.amount,
-        "currency": account["currency"],
-        "description": f"Kredi Kartı Borç Ödemesi ({card['card_number'][-4:]})",
-        "status": "completed",
-        "type": "cc_payment",
-        "created_at": datetime.now(timezone.utc)
-    }
-    await db.transactions.insert_one(tx_doc)
     
     # 4. Log cc transaction
     cc_tx = CreditCardTransaction(
