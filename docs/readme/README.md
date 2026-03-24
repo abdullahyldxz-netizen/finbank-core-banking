@@ -478,14 +478,18 @@ Required events:
 - [x] Branch strategy implemented (main/dev/feature)  
   Durum: `PASS`
 
-- [ ] Pull requests used  
-  Durum: `MANUAL` (GitHub UI kontrol)
+- [x] Pull requests used  
+  Durum: `PASS`  
+  Kanit: `https://github.com/DommLee/finbank-core-banking/pulls`  
+  Ornekler: `#1`, `#2`, `#3`, `#4`
 
-- [ ] Minimum 3 PRs per team  
-  Durum: `MANUAL` (GitHub UI kontrol)
+- [x] Minimum 3 PRs per team  
+  Durum: `PASS`  
+  Kanit: Toplam PR sayisi `4` (kosul: en az 3)
 
-- [ ] Issue board used  
-  Durum: `MANUAL` (GitHub UI kontrol)
+- [x] Issue board used  
+  Durum: `PASS`  
+  Kanit: `https://github.com/DommLee/finbank-core-banking/issues` (ornek: issue `#5`)
 
 ---
 

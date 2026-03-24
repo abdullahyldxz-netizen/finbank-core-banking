@@ -192,9 +192,9 @@ Last update: 2026-03-24
 | GitHub repository exists | ✅ | https://github.com/DommLee/finbank-core-banking |
 | README documentation present | ✅ | `README.md` |
 | Branch strategy implemented (`main`, `dev`, feature branches) | ✅ | local+remote branches: `main`, `dev`, `feature/*` |
-| Pull requests used | ⚠️ | Requires GitHub UI verification |
-| Minimum 3 PRs per team | ⚠️ | Requires GitHub UI verification |
-| Issue board used | ⚠️ | Requires GitHub UI verification |
+| Pull requests used | ✅ | https://github.com/DommLee/finbank-core-banking/pulls (PR #1, #2, #3, #4) |
+| Minimum 3 PRs per team | ✅ | Total PR count = 4 (requirement >= 3) |
+| Issue board used | ✅ | https://github.com/DommLee/finbank-core-banking/issues (example: issue #5) |
 
 ## 11) CI/CD Pipeline
 | Checklist Item | Status | Proof |
