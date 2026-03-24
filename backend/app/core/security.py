@@ -1,11 +1,14 @@
 """
 FinBank Core Banking System - Security (Supabase Auth + RBAC)
 """
+import base64
+import hashlib
+import hmac
+import os
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
-from passlib.context import CryptContext
 from supabase import create_client, Client
 from threading import Lock
 from app.core.config import settings
@@ -13,7 +16,7 @@ from app.core.database import get_database
 
 _supabase_client = None
 _supabase_lock = Lock()
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+_LOCAL_HASH_ITERATIONS = 200_000
 
 
 def get_supabase_client() -> Client:
@@ -63,14 +66,39 @@ def get_redirect_url(role: str) -> str:
 
 def hash_local_password(password: str) -> str:
     """Hash a local fallback password."""
-    return _pwd_context.hash(password)
+    salt = os.urandom(16)
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        _LOCAL_HASH_ITERATIONS,
+    )
+    salt_b64 = base64.urlsafe_b64encode(salt).decode("ascii")
+    digest_b64 = base64.urlsafe_b64encode(digest).decode("ascii")
+    return f"pbkdf2_sha256${_LOCAL_HASH_ITERATIONS}${salt_b64}${digest_b64}"
 
 
 def verify_local_password(plain_password: str, hashed_password: str | None) -> bool:
     """Verify local fallback password hash."""
     if not hashed_password:
         return False
-    return _pwd_context.verify(plain_password, hashed_password)
+    if not hashed_password.startswith("pbkdf2_sha256$"):
+        return False
+    try:
+        _, iterations_str, salt_b64, expected_b64 = hashed_password.split("$", 3)
+        iterations = int(iterations_str)
+        salt = base64.urlsafe_b64decode(salt_b64.encode("ascii"))
+        expected = base64.urlsafe_b64decode(expected_b64.encode("ascii"))
+    except Exception:
+        return False
+
+    candidate = hashlib.pbkdf2_hmac(
+        "sha256",
+        plain_password.encode("utf-8"),
+        salt,
+        iterations,
+    )
+    return hmac.compare_digest(candidate, expected)
 
 
 def create_local_access_token(user: dict) -> str:

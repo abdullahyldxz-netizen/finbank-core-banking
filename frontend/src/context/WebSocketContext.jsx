@@ -55,16 +55,18 @@ export function WebSocketProvider({ children }) {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    // Mevcut bağlantıyı kapat
+    // Aynı anda birden fazla bağlantı döngüsünü engelle
     if (wsRef.current) {
-      wsRef.current.close();
+      const state = wsRef.current.readyState;
+      if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) {
+        return;
+      }
+      wsRef.current = null;
     }
 
     // WS URL'ini oluştur
     const envApiUrl = (import.meta.env.VITE_API_URL || "").trim();
-    const isLocalRuntime =
-      window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-    const apiUrl = (isLocalRuntime ? "/api/v1" : (envApiUrl || "/api/v1")).replace(/\/$/, "");
+    const apiUrl = (envApiUrl || "/api/v1").replace(/\/$/, "");
     let wsUrl;
     const encodedToken = encodeURIComponent(token);
 
@@ -160,6 +162,9 @@ export function WebSocketProvider({ children }) {
       ws.onclose = (event) => {
         console.log(`[WS] ❌ Bağlantı kapandı (code: ${event.code})`);
         setIsConnected(false);
+        if (wsRef.current === ws) {
+          wsRef.current = null;
+        }
 
         if (pingIntervalRef.current) {
           clearInterval(pingIntervalRef.current);
